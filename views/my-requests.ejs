@@ -14,27 +14,40 @@
                         <thead class="bg-primary">
                             <tr>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Timestamp</th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Company</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Contact</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Product</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Request Type</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Users</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">My Notes</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            <% requests.forEach(request => { %>
+                            <% 
+                            const statusInfo = {
+                                "NEW": { color: "text-red-400", title: "New Request", icon: "far fa-circle" },
+                                "IN_PROGRESS": { color: "text-yellow-500", title: "In Progress", icon: "fas fa-clock" },
+                                "COMPLETED": { color: "text-green-500", title: "Completed", icon: "fas fa-check-circle" }
+                            };
+                            requests.forEach(request => { 
+                                const currentStatus = statusInfo[request.status] || statusInfo["NEW"];
+                            %>
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= new Date(request.timestamp).toLocaleString() %></td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><%= request.companyName %></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        <i class="<%= currentStatus.icon %> <%= currentStatus.color %> mr-2" title="Status: <%= currentStatus.title %>"></i>
+                                        <span><%= currentStatus.title %></span>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800"><%= request.contactPerson %></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800"><%= request.product %></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800"><%= request.requestType %></td>
                                     <td class="px-6 py-4 text-sm text-gray-500 break-all"><%= request.users || 'N/A' %></td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 break-words max-w-xs"><%= request.notes || 'N/A' %></td>
                                 </tr>
                             <% }); %>
                             <% if (requests.length === 0) { %>
                                 <tr>
-                                    <td colspan="6" class="px-6 py-10 whitespace-nowrap text-sm text-gray-500 text-center">You have not made any requests yet.</td>
+                                    <td colspan="7" class="px-6 py-10 whitespace-nowrap text-sm text-gray-500 text-center">You have not made any requests yet.</td>
                                 </tr>
                             <% } %>
                         </tbody>

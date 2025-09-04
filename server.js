@@ -9,6 +9,7 @@ const session = require('express-session');
 const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
+const { spawn } = require('child_process');
 
 const prisma = new PrismaClient();
 const app = express();
@@ -129,7 +130,11 @@ app.get('/admin', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const requests = await prisma.request.findMany({
             include: {
-                user: true
+                scriptJobs: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }
             },
             orderBy: {
                 timestamp: 'desc'
@@ -151,6 +156,13 @@ app.get('/admin', isAuthenticated, isAdmin, async (req, res) => {
 app.get('/api/requests', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const requests = await prisma.request.findMany({
+            include: {
+                scriptJobs: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }
+            },
             orderBy: {
                 timestamp: 'desc'
             }
@@ -180,10 +192,25 @@ app.post('/admin/notes/:id', isAuthenticated, isAdmin, async (req, res) => {
 app.get('/my-requests', isAuthenticated, async (req, res) => {
     try {
         const requests = await prisma.request.findMany({
-            where: { userId: req.session.user.id },
-            orderBy: { timestamp: 'desc' }
+            where: {
+                userId: req.session.user.id
+            },
+            orderBy: {
+                timestamp: 'desc'
+            },
+            include: {
+                scriptJobs: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }
+            }
         });
-        res.render('my-requests', { title: 'My Requests', requests: requests });
+        res.render('my-requests', {
+            title: 'My Requests',
+            requests: requests,
+            user: req.session.user
+        });
     } catch (error) {
         console.error(error);
         res.status(500).send("Error fetching requests");
@@ -317,6 +344,11 @@ app.post('/api/create-jira-ticket', isAuthenticated, isAdmin, async (req, res) =
     const jiraResponse = await response.json();
     const ticketUrl = `https://${JIRA_HOST}/browse/${jiraResponse.key}`;
     
+    await prisma.request.update({
+        where: { id: parseInt(requestId, 10) },
+        data: { status: 'IN_PROGRESS' }
+    });
+    
     res.json({
       message: 'Jira ticket created successfully!',
       ticketUrl: ticketUrl,
@@ -367,6 +399,113 @@ app.post('/api/requests/:id/notes', isAuthenticated, isAdmin, async (req, res) =
     console.error('Error updating admin notes:', error);
     res.status(500).json({ error: 'Failed to update admin notes.' });
   }
+});
+
+app.post('/api/run-script', isAuthenticated, isAdmin, async (req, res) => {
+    const { scriptName, args, requestId } = req.body;
+
+    if (!scriptName || !Array.isArray(args) || !requestId) {
+        return res.status(400).json({ error: 'scriptName, args array, and requestId are required.' });
+    }
+
+    // --- Security Validation ---
+    const sanitizedScriptName = path.basename(scriptName);
+    if (sanitizedScriptName !== scriptName) {
+        return res.status(400).json({ error: 'Invalid script name.' });
+    }
+    
+    const scriptDir = path.join(__dirname, 'scripts');
+    const scriptPath = path.join(scriptDir, sanitizedScriptName);
+    const logsDir = path.join(__dirname, 'logs');
+    fs.mkdirSync(logsDir, { recursive: true }); // Ensure logs directory exists
+
+    if (!scriptPath.startsWith(scriptDir) || path.extname(scriptPath) !== '.py') {
+        return res.status(400).json({ error: 'Invalid script path. Only .py scripts are allowed.' });
+    }
+    
+    try {
+        const logFile = `${Date.now()}-${requestId}-${sanitizedScriptName}.log`;
+        const logFilePath = path.join(logsDir, logFile);
+
+        const job = await prisma.scriptJob.create({
+            data: {
+                requestId: requestId,
+                scriptName: sanitizedScriptName,
+                status: 'RUNNING',
+                logFile: logFile
+            }
+        });
+
+        res.status(202).json(job); // Respond immediately
+
+        // --- Run script in the background ---
+        const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+        const scriptProcess = spawn('python3', [scriptPath, ...args]);
+        
+        scriptProcess.stdout.pipe(logStream);
+        scriptProcess.stderr.pipe(logStream);
+
+        scriptProcess.on('close', async (code) => {
+            const finalStatus = code === 0 ? 'COMPLETED' : 'FAILED';
+            await prisma.scriptJob.update({
+                where: { id: job.id },
+                data: {
+                    status: finalStatus,
+                    completedAt: new Date(),
+                }
+            });
+            if (finalStatus === 'COMPLETED') {
+                await prisma.request.update({
+                    where: { id: job.requestId },
+                    data: { status: 'COMPLETED' }
+                });
+            }
+            logStream.end();
+        });
+
+        scriptProcess.on('error', async (err) => {
+            console.error('Failed to start script process.', err);
+            logStream.write(`\n--- FAILED TO START SCRIPT: ${err.message} ---\n`);
+            await prisma.scriptJob.update({
+                where: { id: job.id },
+                data: { status: 'FAILED', completedAt: new Date() }
+            });
+            logStream.end();
+        });
+
+    } catch (error) {
+        console.error("Error creating script job:", error);
+        res.status(500).json({ error: "Failed to create script job."});
+    }
+});
+
+app.get('/api/jobs/:id', isAuthenticated, isAdmin, async (req, res) => {
+    const jobId = parseInt(req.params.id, 10);
+    try {
+        const job = await prisma.scriptJob.findUnique({ where: { id: jobId }});
+        if (!job) {
+            return res.status(404).json({ error: 'Job not found.'});
+        }
+        
+        const logsDir = path.join(__dirname, 'logs');
+        const logFilePath = path.join(logsDir, job.logFile);
+
+        let logContent = `Job Status: ${job.status}\n--- Logs ---\n`;
+        if (fs.existsSync(logFilePath)) {
+            logContent += fs.readFileSync(logFilePath, 'utf-8');
+        } else {
+            logContent += 'Log file not found.';
+        }
+        
+        res.json({
+            status: job.status,
+            logContent: logContent
+        });
+
+    } catch (error) {
+        console.error(`Error fetching job ${jobId}:`, error);
+        res.status(500).json({ error: 'Failed to fetch job status.' });
+    }
 });
 
 

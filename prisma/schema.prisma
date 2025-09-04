@@ -19,8 +19,8 @@ model User {
 }
 
 model Request {
-  id            Int      @id @default(autoincrement())
-  timestamp     DateTime @default(now())
+  id            Int        @id @default(autoincrement())
+  timestamp     DateTime   @default(now())
   companyName   String
   contactPerson String
   email         String
@@ -29,8 +29,9 @@ model Request {
   users         String?
   notes         String?
   adminNotes    String?
-  status        String   @default("NEW") // NEW, IN_PROGRESS, COMPLETED
-  User          User?    @relation(fields: [userId], references: [id])
+  status        String     @default("NEW") // NEW, IN_PROGRESS, COMPLETED
+  scriptJobs    ScriptJob[]
+  User          User?      @relation(fields: [userId], references: [id])
   userId        Int?
 }
 
@@ -39,4 +40,15 @@ model Session {
   sid       String   @unique
   data      String
   expiresAt DateTime
+}
+
+model ScriptJob {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  scriptName  String
+  status      String // PENDING, RUNNING, COMPLETED, FAILED
+  logFile     String
+  request     Request   @relation(fields: [requestId], references: [id])
+  requestId   Int
 }

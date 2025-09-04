@@ -18,7 +18,7 @@
 <script type="text/babel">
     const { useState, useEffect, Fragment } = React;
 
-    const JiraModal = ({ request, jiraProjects, onClose, onTicketCreated }) => {
+    const JiraModal = ({ request, jiraProjects, onClose, onTicketCreated, onDataRefresh }) => {
         if (!request) return null;
         const [selectedProject, setSelectedProject] = useState(Object.keys(jiraProjects)[0] || '');
         const [isCreating, setIsCreating] = useState(false);
@@ -37,6 +37,7 @@
                 if (response.ok) {
                     setResult({ success: true, ...data });
                     onTicketCreated();
+                    onDataRefresh();
                 } else {
                     setResult({ success: false, error: data.error });
                 }
@@ -81,7 +82,12 @@
     
     const StatusIcon = ({ request, onStatusChange }) => {
         const statusCycle = { "NEW": "IN_PROGRESS", "IN_PROGRESS": "COMPLETED", "COMPLETED": "NEW" };
-        const statusColors = { "NEW": "text-red-400", "IN_PROGRESS": "text-yellow-500", "COMPLETED": "text-green-500" };
+        
+        const statusInfo = {
+            "NEW": { color: "text-red-400", title: "New Request", icon: "far fa-circle" },
+            "IN_PROGRESS": { color: "text-yellow-500", title: "In Progress", icon: "fas fa-clock" },
+            "COMPLETED": { color: "text-green-500", title: "Completed", icon: "fas fa-check-circle" }
+        };
 
         const handleClick = async (e) => {
             e.stopPropagation(); // Prevent row from toggling
@@ -102,16 +108,91 @@
             }
         };
 
+        const currentStatusInfo = statusInfo[request.status] || statusInfo["NEW"];
+        
         return (
-            <svg onClick={handleClick} className={`w-6 h-6 cursor-pointer ${statusColors[request.status]}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
+            <i 
+                title={`Status: ${currentStatusInfo.title}`}
+                onClick={handleClick}
+                className={`w-6 h-6 flex items-center justify-center text-lg cursor-pointer ${currentStatusInfo.icon} ${currentStatusInfo.color}`}
+            ></i>
         );
     };
 
-    const RequestRow = ({ request, isExpanded, onToggleExpand, onOpenJiraModal, onStatusChange, onNotesUpdate }) => {
+    const RequestRow = ({ request, isExpanded, onToggleExpand, onOpenJiraModal, onStatusChange, onNotesUpdate, onDataRefresh }) => {
         const [adminNotes, setAdminNotes] = useState(request.adminNotes || '');
         const [isSaving, setIsSaving] = useState(false);
+        const [jobs, setJobs] = useState(request.scriptJobs || []);
+        const [selectedJobId, setSelectedJobId] = useState(jobs.length > 0 ? jobs[0].id : null);
+        const [logContent, setLogContent] = useState('');
+        const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+        const activeJob = jobs.find(j => j.id === selectedJobId);
+
+        useEffect(() => {
+            let isMounted = true;
+            let pollInterval = null;
+
+            const poll = async (jobId) => {
+                try {
+                    const response = await fetch(`/api/jobs/${jobId}`);
+                    if (!isMounted) return; // Abort if component unmounted during fetch
+
+                    const data = await response.json();
+                    if (response.ok) {
+                        setLogContent(data.logContent);
+                        const newStatus = data.status;
+                        setJobs(prevJobs => prevJobs.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
+                        if (newStatus === 'COMPLETED' || newStatus === 'FAILED') {
+                            onDataRefresh();
+                        }
+                    }
+                } catch (error) {
+                    console.error("Polling error:", error);
+                }
+            };
+
+            if (activeJob && activeJob.status === 'RUNNING') {
+                pollInterval = setInterval(() => poll(activeJob.id), 3000);
+            }
+            
+            return () => {
+                isMounted = false;
+                if(pollInterval) clearInterval(pollInterval);
+            };
+        }, [activeJob]);
+
+        const fetchJobStatus = async (jobId) => {
+            if (!jobId) return;
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`);
+                const data = await response.json();
+                if (response.ok) {
+                    setLogContent(data.logContent);
+                    const newStatus = data.status;
+                    setJobs(prevJobs => prevJobs.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
+                    if (newStatus === 'COMPLETED' || newStatus === 'FAILED') {
+                       onDataRefresh();
+                    }
+                }
+            } catch (error) {
+                console.error("Polling error:", error);
+            }
+        };
+
+        const viewLogs = async (jobId) => {
+            setIsLoadingLogs(true);
+            setLogContent('');
+            await fetchJobStatus(jobId);
+            setIsLoadingLogs(false);
+        };
+        
+        useEffect(() => {
+            if (selectedJobId) {
+                viewLogs(selectedJobId);
+            }
+        }, [selectedJobId]);
+
 
         const handleSaveNotes = async (e) => {
             e.preventDefault();
@@ -135,6 +216,63 @@
             }
         }
 
+        const handleRunScript = async () => {
+            setLogContent('--- Starting script... ---\n');
+            try {
+                const response = await fetch('/api/run-script', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requestId: request.id,
+                        scriptName: 'add_user.py',
+                        args: [request.email, request.product, ...(request.users ? request.users.split(/[,\\s]+/) : [])]
+                    }),
+                });
+                
+                if (response.status === 202) {
+                    const newJob = await response.json();
+                    setJobs(prevJobs => [newJob, ...prevJobs]);
+                    setSelectedJobId(newJob.id);
+                } else {
+                     const err = await response.json();
+                    throw new Error(err.error || 'API Error');
+                }
+            } catch (error) {
+                setLogContent(prev => prev + `\n--- ERROR: ${error.message} ---`);
+            }
+        }
+
+        const renderScriptUI = () => {
+            const isAnyJobRunning = jobs.some(j => j.status === 'RUNNING');
+            return (
+                <div>
+                    <div className="flex items-center space-x-2">
+                        <button onClick={handleRunScript} disabled={isAnyJobRunning} className="mt-2 flex-grow px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 disabled:opacity-50">
+                            {isAnyJobRunning ? 'A job is running...' : 'Run New Script'}
+                        </button>
+                    </div>
+                    {jobs.length > 0 && (
+                        <div className="mt-4">
+                            <label htmlFor="job-selector" className="block text-sm font-medium text-gray-700">Job History</label>
+                            <select id="job-selector" value={selectedJobId} onChange={e => setSelectedJobId(Number(e.target.value))} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
+                                {jobs.map(job => (
+                                    <option key={job.id} value={job.id}>
+                                        {new Date(job.createdAt).toLocaleString()} - {job.status}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="mt-4">
+                                <h5 className="font-medium text-gray-600">Script Output:</h5>
+                                <pre className="mt-2 text-xs text-gray-800 bg-gray-100 p-4 rounded-md shadow-inner h-48 overflow-y-auto whitespace-pre-wrap">
+                                    {isLoadingLogs ? 'Loading logs...' : (logContent || 'Select a job to view its logs.')}
+                                </pre>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )
+        }
+
         return (
             <Fragment>
                 <tr onClick={onToggleExpand} className="hover:bg-gray-50 cursor-pointer">
@@ -147,7 +285,11 @@
                     <td className="px-6 py-4 text-sm text-gray-500 break-all">{request.users || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex items-center space-x-4">
-                            <svg onClick={(e) => { e.stopPropagation(); onOpenJiraModal(request); }} className="w-6 h-6 text-blue-600 hover:text-blue-800 cursor-pointer" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.33 14.33a.6.6 0 01-.5.2H5.7a.6.6 0 01-.5-.2L4 13.13a.5.5 0 010-.7l2-2.13a.5.5 0 01.7 0l2.4 2.53a.5.5 0 010 .7l-1.47 1.6zM15.4 9.43l-2.4-2.53a.5.5 0 00-.7 0l-2 2.13a.5.5 0 000 .7l1.2 1.33a.6.6 0 00.5.2h2.13a.6.6 0 00.5-.2l1.2-1.33a.5.5 0 000-.7z"></path></svg>
+                            <i 
+                                title="Create Jira Ticket"
+                                onClick={(e) => { e.stopPropagation(); onOpenJiraModal(request); }} 
+                                className="fab fa-jira text-xl text-blue-600 hover:text-blue-800 cursor-pointer"
+                            ></i>
                             <StatusIcon request={request} onStatusChange={onStatusChange} />
                         </div>
                     </td>
@@ -155,7 +297,7 @@
                 {isExpanded && (
                     <tr>
                         <td colSpan="8" className="p-6 bg-light-gray">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
                                     <h4 className="font-bold text-gray-700">User Notes</h4>
                                     <p className="mt-2 text-gray-600 bg-white p-4 rounded-md shadow-sm min-h-[100px]">{request.notes || 'No notes provided.'}</p>
@@ -168,6 +310,12 @@
                                             {isSaving ? 'Saving...' : 'Save Notes'}
                                         </button>
                                     </form>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-gray-700">Run Action</h4>
+                                    {request.requestType === 'Add Users' ? renderScriptUI() : (
+                                        <p className="mt-2 text-gray-600">No script available for this request type.</p>
+                                    )}
                                 </div>
                             </div>
                         </td>
@@ -199,6 +347,27 @@
              // Future enhancement: could add a visual indicator here
         }
 
+        const refreshData = async () => {
+            try {
+                const response = await fetch('/api/requests');
+                if (response.ok) {
+                    const data = await response.json();
+                    // The API returns an array directly, so we use it directly
+                    setRequests(data);
+                } else {
+                    console.error('Failed to refresh requests:', response.status);
+                    setRequests([]); // Fallback to empty array to prevent crash
+                }
+            } catch (error) {
+                console.error('Network error while refreshing requests:', error);
+                setRequests([]); // Fallback to empty array to prevent crash
+            }
+        };
+
+        useEffect(() => {
+            // Initial data is loaded via server, no need for initial fetch
+        }, []);
+
         return (
             <div>
                 <div className="shadow-lg overflow-hidden border-b border-gray-200 sm:rounded-xl">
@@ -225,6 +394,7 @@
                                     onOpenJiraModal={setSelectedRequestForJira}
                                     onStatusChange={handleStatusChange}
                                     onNotesUpdate={handleNotesUpdate}
+                                    onDataRefresh={refreshData}
                                 />
                             ))}
                         </tbody>
@@ -235,6 +405,7 @@
                     jiraProjects={jiraProjects} 
                     onClose={() => setSelectedRequestForJira(null)}
                     onTicketCreated={handleTicketCreated}
+                    onDataRefresh={refreshData}
                 />
             </div>
         );
