@@ -14,6 +14,12 @@ const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 5555;
 
+const JIRA_PROJECTS = {
+  "TC": "Tool-Catalog",
+  "SEC": "Security Projects",
+  "DEVOPS": "DevOps"
+};
+
 // View engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -122,12 +128,37 @@ app.get('/request', (req, res) => {
 app.get('/admin', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const requests = await prisma.request.findMany({
-            orderBy: { timestamp: 'desc' }
+            include: {
+                user: true
+            },
+            orderBy: {
+                timestamp: 'desc'
+            }
         });
-        res.render('admin', { title: 'Admin Dashboard', requests: requests });
+        res.render('admin', {
+            title: 'Admin Dashboard',
+            user: req.session.user,
+            requests: requests,
+            jiraProjects: JIRA_PROJECTS,
+            initialData: JSON.stringify({ requests, jiraProjects: JIRA_PROJECTS }) 
+        });
     } catch (error) {
-        console.error(error);
+        console.error('Error fetching requests for admin:', error);
         res.status(500).send("Error fetching requests");
+    }
+});
+
+app.get('/api/requests', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const requests = await prisma.request.findMany({
+            orderBy: {
+                timestamp: 'desc'
+            }
+        });
+        res.json(requests);
+    } catch (error) {
+        console.error('Error fetching requests API:', error);
+        res.status(500).json({ error: 'Failed to fetch requests.' });
     }
 });
 
@@ -227,6 +258,115 @@ app.post('/request', async (req, res) => {
         console.error(error);
         res.status(400).send("Error processing request");
     }
+});
+
+app.post('/api/create-jira-ticket', isAuthenticated, isAdmin, async (req, res) => {
+  const { requestId, jiraProjectKey } = req.body;
+
+  if (!requestId || !jiraProjectKey) {
+    return res.status(400).json({ error: 'Missing request ID or Jira project key.' });
+  }
+
+  try {
+    const requestDetails = await prisma.request.findUnique({
+      where: { id: parseInt(requestId, 10) }
+    });
+
+    if (!requestDetails) {
+      return res.status(404).json({ error: 'Request not found.' });
+    }
+    
+    const { JIRA_HOST, JIRA_USER_EMAIL, JIRA_API_TOKEN } = process.env;
+
+    if (!JIRA_HOST || !JIRA_USER_EMAIL || !JIRA_API_TOKEN) {
+      return res.status(500).json({ error: 'Jira environment variables are not configured on the server.' });
+    }
+
+    const jiraApiUrl = `https://${JIRA_HOST}/rest/api/2/issue`;
+    
+    const ticketBody = {
+      fields: {
+        project: {
+          key: jiraProjectKey
+        },
+        summary: `New AppSec Catalog Request: ${requestDetails.product}`,
+        description: `A new tool request has been submitted.\n\n- Company: ${requestDetails.companyName}\n- Contact: ${requestDetails.contactPerson} (${requestDetails.email})\n- Request Type: ${requestDetails.requestType}\n- Product: ${requestDetails.product}\n- Users: ${requestDetails.users || 'N/A'}\n- User Notes: ${requestDetails.notes || 'N/A'}\n- Admin Notes: ${requestDetails.adminNotes || 'N/A'}`,
+        issuetype: {
+          name: "Story" 
+        }
+      }
+    };
+    
+    const auth = Buffer.from(`${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}`).toString('base64');
+
+    const response = await fetch(jiraApiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(ticketBody)
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`Jira API Error: ${response.status} ${response.statusText}`, errorBody);
+      return res.status(response.status).json({ error: `Jira API responded with status ${response.status}.`, details: errorBody });
+    }
+
+    const jiraResponse = await response.json();
+    const ticketUrl = `https://${JIRA_HOST}/browse/${jiraResponse.key}`;
+    
+    res.json({
+      message: 'Jira ticket created successfully!',
+      ticketUrl: ticketUrl,
+      ticketKey: jiraResponse.key
+    });
+
+  } catch (error) {
+    console.error('Error creating Jira ticket:', error);
+    res.status(500).json({ error: 'An internal server error occurred while creating the Jira ticket.' });
+  }
+});
+
+app.post('/api/requests/:id/status', isAuthenticated, isAdmin, async (req, res) => {
+  const requestId = parseInt(req.params.id, 10);
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ error: 'Status is required.' });
+  }
+
+  try {
+    const updatedRequest = await prisma.request.update({
+      where: { id: requestId },
+      data: { status: status },
+    });
+    res.json(updatedRequest);
+  } catch (error) {
+    console.error('Error updating request status:', error);
+    res.status(500).json({ error: 'Failed to update status.' });
+  }
+});
+
+app.post('/api/requests/:id/notes', isAuthenticated, isAdmin, async (req, res) => {
+  const requestId = parseInt(req.params.id, 10);
+  const { adminNotes } = req.body;
+
+  if (typeof adminNotes === 'undefined') {
+    return res.status(400).json({ error: 'adminNotes field is required.' });
+  }
+
+  try {
+    const updatedRequest = await prisma.request.update({
+      where: { id: requestId },
+      data: { adminNotes: adminNotes },
+    });
+    res.json(updatedRequest);
+  } catch (error) {
+    console.error('Error updating admin notes:', error);
+    res.status(500).json({ error: 'Failed to update admin notes.' });
+  }
 });
 
 

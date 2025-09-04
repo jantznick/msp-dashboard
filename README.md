@@ -9,6 +9,7 @@ A simple, monolithic web application designed to serve as a central hub for mana
 - **User Accounts**: A full user registration and login system.
 - **Request Tracking**: Logged-in users can view the history of their own requests.
 - **Admin Dashboard**: A protected admin area to view and manage all submitted requests, including adding private notes.
+- **Jira Integration**: Admins can create a Jira ticket from a request with a single click.
 - **Email Notifications**: Admins receive an email notification for every new request submitted.
 - **Production Ready**: Uses `pm2` for process management and Prisma for safe database migrations in a production environment.
 
@@ -68,6 +69,14 @@ EMAIL_USER=your-smtp-username
 EMAIL_PASS=your-smtp-password
 EMAIL_FROM="AppSec Catalog <no-reply@example.com>"
 EMAIL_TO=your-inbox@example.com
+
+# --- Jira Integration ---
+# Your Jira instance host (e.g., your-company.atlassian.net)
+JIRA_HOST=
+# The email address of the user that will be used to create tickets.
+JIRA_USER_EMAIL=
+# The API token for the Jira user.
+JIRA_API_TOKEN=
 ```
 
 ### 4. Run Initial Database Migration

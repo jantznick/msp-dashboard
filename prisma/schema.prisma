@@ -20,6 +20,7 @@ model User {
 
 model Request {
   id            Int      @id @default(autoincrement())
+  timestamp     DateTime @default(now())
   companyName   String
   contactPerson String
   email         String
@@ -28,8 +29,8 @@ model Request {
   users         String?
   notes         String?
   adminNotes    String?
-  timestamp     DateTime @default(now())
-  user          User?    @relation(fields: [userId], references: [id])
+  status        String   @default("NEW") // NEW, IN_PROGRESS, COMPLETED
+  User          User?    @relation(fields: [userId], references: [id])
   userId        Int?
 }
 
