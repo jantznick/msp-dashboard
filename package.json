@@ -4,8 +4,11 @@
   "description": "An application to track appsec initiatives and tool onboarding.",
   "main": "server.js",
   "scripts": {
-    "start": "npm run build:css && node server.js",
-    "dev": "concurrently \"nodemon server.js\" \"npm run watch:css\"",
+    "dev": "npm run build:css && concurrently \"npm run watch:css\" \"nodemon server.js\"",
+    "start": "npm run build:css && npx prisma migrate deploy && pm2 start ecosystem.config.js --env production",
+    "stop": "pm2 stop appsec-catalog",
+    "restart": "pm2 restart appsec-catalog",
+    "logs": "pm2 logs appsec-catalog",
     "build:css": "npx @tailwindcss/cli -i ./public/css/input.css -o ./public/css/style.css",
     "watch:css": "npx @tailwindcss/cli -i ./public/css/input.css -o ./public/css/style.css --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -14,7 +17,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.15.0",
+    "@prisma/client": "^5.17.0",
     "@quixo3/prisma-session-store": "^3.1.13",
     "@tailwindcss/vite": "^4.1.12",
     "bcrypt": "^6.0.0",
@@ -24,9 +27,10 @@
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
-    "express-session": "^1.18.2",
-    "marked": "^16.2.1",
+    "express-session": "^1.18.0",
+    "marked": "^13.0.2",
     "nodemailer": "^6.9.14",
+    "pm2": "^5.4.2",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
