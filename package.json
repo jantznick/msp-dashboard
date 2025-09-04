@@ -1,0 +1,39 @@
+{
+  "name": "appsec-catalog",
+  "version": "1.0.0",
+  "description": "An application to track appsec initiatives and tool onboarding.",
+  "main": "server.js",
+  "scripts": {
+    "start": "npm run build:css && node server.js",
+    "dev": "concurrently \"nodemon server.js\" \"npm run watch:css\"",
+    "build:css": "npx @tailwindcss/cli -i ./public/css/input.css -o ./public/css/style.css",
+    "watch:css": "npx @tailwindcss/cli -i ./public/css/input.css -o ./public/css/style.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "@quixo3/prisma-session-store": "^3.1.13",
+    "@tailwindcss/vite": "^4.1.12",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^1.20.2",
+    "connect-sqlite3": "^0.9.16",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.2",
+    "marked": "^16.2.1",
+    "nodemailer": "^6.9.14",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.12",
+    "@tailwindcss/typography": "^0.5.16",
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.4",
+    "prisma": "^6.15.0"
+  }
+}

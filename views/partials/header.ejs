@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AppSec Catalog | <%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[light-gray] font-sans text-[dark-gray]">
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <a href="/" class="text-2xl font-bold text-primary">AppSec Catalog</a>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-center space-x-6">
+                        <a href="/" class="text-gray-500 hover:text-primary transition-colors duration-300">Home</a>
+                        <a href="/request" class="text-gray-500 hover:text-primary transition-colors duration-300">Request a Tool</a>
+                        <a href="/add-users" class="text-gray-500 hover:text-primary transition-colors duration-300">Add Users</a>
+                        
+                        <% if (user) { %>
+                            <a href="/my-requests" class="text-gray-500 hover:text-primary transition-colors duration-300">My Requests</a>
+                            <% if (isAdmin) { %>
+                                <a href="/admin" class="text-gray-500 hover:text-primary transition-colors duration-300">Admin</a>
+                            <% } %>
+                            <a href="/logout" class="px-4 py-2 rounded-md text-sm font-medium text-white bg-secondary hover:bg-opacity-90 transition-colors">Logout</a>
+                        <% } else { %>
+                            <a href="/login" class="text-gray-500 hover:text-primary transition-colors duration-300">Login</a>
+                            <a href="/register" class="px-4 py-2 rounded-md text-sm font-medium text-white bg-primary hover:bg-opacity-90 transition-colors">Register</a>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <main class="max-w-7xl mx-auto py-10 sm:px-6 lg:px-8">

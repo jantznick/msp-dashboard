@@ -1,0 +1,50 @@
+<%- include('partials/header') %>
+
+<div class="text-center py-24 px-4 bg-white rounded-xl shadow-lg">
+    <h1 class="text-6xl font-bold text-[secondary]">AppSec Catalog</h1>
+    <p class="mt-4 text-xl text-gray-500 max-w-2xl mx-auto">Your central hub for application security tools and initiatives. Empowering development teams with the best security solutions.</p>
+</div>
+
+<div id="products" class="py-16">
+    <div class="text-center mb-12">
+        <h2 class="text-5xl font-bold text-[secondary]">Our Tools</h2>
+        <p class="mt-4 text-lg text-gray-500">Click on a product to learn more and request information.</p>
+    </div>
+
+    <%
+        const products = [
+            {
+                name: 'Fastly NGWAF',
+                slug: 'fastly-ngwaf',
+                description: 'A powerful, flexible, and scalable Web Application Firewall that protects your applications and APIs from threats.'
+            },
+            {
+                name: 'Snyk',
+                slug: 'snyk',
+                description: 'Developer-first security to find and fix vulnerabilities in your code, open source dependencies, containers, and IaC.'
+            },
+            {
+                name: 'Tenable WAS (DAST Scanner)',
+                slug: 'tenable-was',
+                description: 'Comprehensive web application scanning to identify and manage vulnerabilities in your web applications.'
+            },
+            {
+                name: 'Traceable API Security',
+                slug: 'traceable-api-security',
+                description: 'End-to-end API security to protect your APIs from business logic abuse and data exfiltration.'
+            }
+        ];
+    %>
+
+    <div class="mt-12 grid gap-8 md:grid-cols-2">
+        <% products.forEach(product => { %>
+            <a href="/products/<%= product.slug %>" class="block bg-white border border-gray-100 rounded-xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300 ease-in-out">
+                <h2 class="text-3xl font-bold text-primary mb-3"><%= product.name %></h2>
+                <p class="text-gray-600 leading-relaxed"><%= product.description %></p>
+            </a>
+        <% }); %>
+    </div>
+</div>
+
+
+<%- include('partials/footer') %>

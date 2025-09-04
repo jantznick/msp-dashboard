@@ -1,0 +1,77 @@
+<%- include('partials/header') %>
+
+<div class="py-10 px-4">
+    <div class="text-center">
+        <h1 class="text-5xl font-bold text-[secondary]">Admin Dashboard</h1>
+        <p class="mt-4 text-lg text-gray-500">Here you can view all tool requests.</p>
+    </div>
+
+    <div class="mt-8 flex flex-col">
+        <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                <div class="shadow-lg overflow-hidden border-b border-gray-200 sm:rounded-xl">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-primary">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Timestamp</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Company</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Contact</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Email</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Product</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Type</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">Users</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <% requests.forEach(request => { %>
+                                <tr class="hover:bg-gray-50 cursor-pointer request-row" data-id="<%= request.id %>">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= new Date(request.timestamp).toLocaleString() %></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><%= request.companyName %></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800"><%= request.contactPerson %></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800"><%= request.email %></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800"><%= request.product %></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800"><%= request.requestType %></td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 break-all"><%= request.users || 'N/A' %></td>
+                                </tr>
+                                <tr class="details-row hidden" id="details-<%= request.id %>">
+                                    <td colspan="7" class="p-6 bg-gray-50">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <h4 class="font-bold text-gray-700">User Notes</h4>
+                                                <p class="mt-2 text-gray-600 bg-white p-4 rounded-md shadow-sm min-h-[100px]"><%= request.notes || 'No notes provided.' %></p>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-bold text-gray-700">Admin Notes</h4>
+                                                <form action="/admin/notes/<%= request.id %>" method="POST">
+                                                    <textarea name="adminNotes" rows="4" class="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"><%= request.adminNotes || '' %></textarea>
+                                                    <button type="submit" class="mt-2 px-4 py-2 bg-secondary text-white text-sm font-medium rounded-md hover:bg-opacity-90">Save Notes</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                            <% if (requests.length === 0) { %>
+                                <tr>
+                                    <td colspan="7" class="px-6 py-10 whitespace-nowrap text-sm text-gray-500 text-center">No requests have been submitted yet.</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.request-row').forEach(row => {
+        row.addEventListener('click', () => {
+            const id = row.dataset.id;
+            const detailsRow = document.getElementById(`details-${id}`);
+            detailsRow.classList.toggle('hidden');
+        });
+    });
+</script>
+
+<%- include('partials/footer') %>
