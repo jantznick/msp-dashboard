@@ -8,8 +8,4 @@
   --color-secondary: #1d3557;
   --color-light-gray: #f8f9fa;
   --color-dark-gray: #343a40;
-
-  fontFamily: {
-    sans: "var(--font-sans)";
-  }
 }
