@@ -23,16 +23,20 @@ model User {
 model Company {
   id           Int           @id @default(autoincrement())
   name         String        @unique
+  domains      String?       // Comma-separated list of email domains
   users        User[]
   applications Application[]
 }
 
 model Application {
-  id        Int       @id @default(autoincrement())
-  name      String
-  company   Company   @relation(fields: [companyId], references: [id])
-  companyId Int
-  requests  Request[]
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  owner       String?
+  repoUrl     String?
+  company     Company   @relation(fields: [companyId], references: [id])
+  companyId   Int
+  requests    Request[]
 }
 
 model Request {

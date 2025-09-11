@@ -53,8 +53,9 @@ app.use(
 app.use(async (req, res, next) => {
     if (req.session.user) {
         res.locals.user = req.session.user;
-        const adminEmails = (process.env.ADMIN_EMAILS || '').split(',');
-        res.locals.isAdmin = adminEmails.includes(req.session.user.email);
+        const adminDomains = (process.env.ADMIN_DOMAINS || '').split(',');
+        const userEmailDomain = req.session.user.email.substring(req.session.user.email.lastIndexOf("@") + 1);
+        res.locals.isAdmin = adminDomains.includes(userEmailDomain);
     } else {
         res.locals.user = null;
         res.locals.isAdmin = false;
@@ -73,8 +74,13 @@ const isAuthenticated = (req, res, next) => {
 
 // Middleware to check if user is an admin
 const isAdmin = (req, res, next) => {
-    const adminEmails = (process.env.ADMIN_EMAILS || '').split(',');
-    if (!req.session.user || !adminEmails.includes(req.session.user.email)) {
+    if (!req.session.user) {
+        return res.redirect('/');
+    }
+    const adminDomains = (process.env.ADMIN_DOMAINS || '').split(',');
+    const userEmailDomain = req.session.user.email.substring(req.session.user.email.lastIndexOf("@") + 1);
+    
+    if (!adminDomains.includes(userEmailDomain)) {
         return res.redirect('/');
     }
     next();
@@ -205,11 +211,26 @@ app.get('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 app.post('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
-    const { name } = req.body;
+    const { name, domains } = req.body;
     try {
-        await prisma.company.create({
-            data: { name }
+        const company = await prisma.company.create({
+            data: { name, domains }
         });
+
+        // Retroactively assign users
+        if (domains) {
+            const domainList = domains.split(',').map(d => d.trim());
+            for (const domain of domainList) {
+                await prisma.user.updateMany({
+                    where: {
+                        email: { endsWith: `@${domain}` },
+                        companyId: null
+                    },
+                    data: { companyId: company.id }
+                });
+            }
+        }
+
         res.redirect('/admin/companies');
     } catch (error) {
         console.error('Error creating company:', error);
@@ -220,12 +241,27 @@ app.post('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
 
 app.post('/admin/companies/:id/update', isAuthenticated, isAdmin, async (req, res) => {
     const companyId = parseInt(req.params.id, 10);
-    const { name } = req.body;
+    const { name, domains } = req.body;
     try {
         await prisma.company.update({
             where: { id: companyId },
-            data: { name }
+            data: { name, domains }
         });
+
+        // Retroactively assign users
+        if (domains) {
+            const domainList = domains.split(',').map(d => d.trim());
+            for (const domain of domainList) {
+                await prisma.user.updateMany({
+                    where: {
+                        email: { endsWith: `@${domain}` },
+                        companyId: null
+                    },
+                    data: { companyId: companyId }
+                });
+            }
+        }
+
         res.redirect('/admin/companies');
     } catch (error) {
         console.error(`Error updating company ${companyId}:`, error);
@@ -250,12 +286,15 @@ app.get('/admin/applications', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 app.post('/admin/applications', isAuthenticated, isAdmin, async (req, res) => {
-    const { name, companyId } = req.body;
+    const { name, companyId, description, owner, repoUrl } = req.body;
     try {
         await prisma.application.create({
             data: {
                 name,
-                companyId: parseInt(companyId, 10)
+                companyId: parseInt(companyId, 10),
+                description,
+                owner,
+                repoUrl
             }
         });
         res.redirect('/admin/applications');
@@ -267,13 +306,16 @@ app.post('/admin/applications', isAuthenticated, isAdmin, async (req, res) => {
 
 app.post('/admin/applications/:id/update', isAuthenticated, isAdmin, async (req, res) => {
     const appId = parseInt(req.params.id, 10);
-    const { name, companyId } = req.body;
+    const { name, companyId, description, owner, repoUrl } = req.body;
     try {
         await prisma.application.update({
             where: { id: appId },
             data: {
                 name,
-                companyId: parseInt(companyId, 10)
+                companyId: parseInt(companyId, 10),
+                description,
+                owner,
+                repoUrl
             }
         });
         res.redirect('/admin/applications');
@@ -775,8 +817,30 @@ app.post('/register', async (req, res) => {
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Auto-assign company based on email domain
+        const userEmailDomain = email.substring(email.lastIndexOf("@") + 1);
+        let companyId = null;
+
+        const companies = await prisma.company.findMany({
+            where: { domains: { contains: userEmailDomain } }
+        });
+        
+        // Find a company where the domain is an exact match in the comma-separated list
+        const matchingCompany = companies.find(c => 
+            c.domains.split(',').map(d => d.trim()).includes(userEmailDomain)
+        );
+
+        if (matchingCompany) {
+            companyId = matchingCompany.id;
+        }
+
         const user = await prisma.user.create({
-            data: { email, password: hashedPassword }
+            data: { 
+                email, 
+                password: hashedPassword,
+                companyId: companyId
+            }
         });
         req.session.user = { id: user.id, email: user.email };
         res.redirect('/');

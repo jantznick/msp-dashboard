@@ -1,77 +1,223 @@
 <%- include('../partials/header') %>
 
-<main class="container mx-auto mt-10 px-4">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Manage Applications</h1>
+<!-- React via CDN -->
+<script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Add New Application</h2>
-        <form action="/admin/applications" method="POST">
-            <div class="mb-4">
-                <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Application Name:</label>
-                <input type="text" id="name" name="name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+<div id="manage-apps-root" class="container mx-auto mt-10 px-4"></div>
+
+<script type="text/babel">
+    const { useState } = React;
+
+    const EditApplicationModal = ({ app, companies, onClose, onSave }) => {
+        if (!app) return null;
+
+        const [name, setName] = useState(app.name);
+        const [companyId, setCompanyId] = useState(app.companyId);
+        const [description, setDescription] = useState(app.description || '');
+        const [owner, setOwner] = useState(app.owner || '');
+        const [repoUrl, setRepoUrl] = useState(app.repoUrl || '');
+        const [isSaving, setIsSaving] = useState(false);
+
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            setIsSaving(true);
+            await onSave(app.id, { name, companyId, description, owner, repoUrl });
+            setIsSaving(false);
+            onClose();
+        };
+
+        return (
+            <div className="fixed z-50 inset-0 overflow-y-auto">
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+                    <div className="bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full z-50">
+                        <form onSubmit={handleSubmit}>
+                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900">Edit Application: {app.name}</h3>
+                                <div className="mt-4">
+                                    <label htmlFor="editName" className="block text-sm font-medium text-gray-700">Application Name</label>
+                                    <input type="text" id="editName" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required />
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="editCompanyId" className="block text-sm font-medium text-gray-700">Company</label>
+                                    <select id="editCompanyId" value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                                        {companies.map(company => (
+                                            <option key={company.id} value={company.id}>{company.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="editDescription" className="block text-sm font-medium text-gray-700">Description</label>
+                                    <textarea id="editDescription" value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                                </div>
+                                <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                                    <div>
+                                        <label htmlFor="editOwner" className="block text-sm font-medium text-gray-700">Owner</label>
+                                        <input type="text" id="editOwner" value={owner} onChange={(e) => setOwner(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editRepoUrl" className="block text-sm font-medium text-gray-700">Repository URL</label>
+                                        <input type="url" id="editRepoUrl" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                                <button type="submit" disabled={isSaving} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
+                                    {isSaving ? 'Saving...' : 'Save'}
+                                </button>
+                                <button type="button" onClick={onClose} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <div class="mb-4">
-                <label for="companyId" class="block text-gray-700 text-sm font-bold mb-2">Company:</label>
-                <select id="companyId" name="companyId" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                    <option value="">Select a company</option>
-                    <% companies.forEach(company => { %>
-                        <option value="<%= company.id %>"><%= company.name %></option>
-                    <% }) %>
-                </select>
+        );
+    };
+
+    const ManageApplicationsPage = ({ initialApps, initialCompanies }) => {
+        const [applications, setApplications] = useState(initialApps);
+        const [companies] = useState(initialCompanies);
+        const [editingApp, setEditingApp] = useState(null);
+        const [filterCompany, setFilterCompany] = useState('');
+        
+        const getCompanyName = (companyId) => {
+            const company = companies.find(c => c.id === companyId);
+            return company ? company.name : 'N/A';
+        };
+
+        const handleSave = async (appId, data) => {
+            try {
+                const response = await fetch(`/admin/applications/${appId}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    setApplications(applications.map(a => a.id === appId ? { ...a, ...data, company: { name: getCompanyName(parseInt(data.companyId, 10)) } } : a));
+                } else {
+                    alert('Failed to save application.');
+                }
+            } catch (error) {
+                alert('An error occurred while saving.');
+            }
+        };
+
+        const filteredApps = filterCompany 
+            ? applications.filter(app => app.companyId === parseInt(filterCompany, 10))
+            : applications;
+
+        return (
+            <div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-6">Manage Applications</h1>
+
+                <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h2 className="text-2xl font-semibold text-gray-700 mb-4">Add New Application</h2>
+                    <form action="/admin/applications" method="POST" className="space-y-4">
+                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                            <div>
+                                <label htmlFor="name" className="block text-sm font-bold text-gray-700">Application Name:</label>
+                                <input type="text" id="name" name="name" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required />
+                            </div>
+                            <div>
+                                <label htmlFor="companyId" className="block text-sm font-bold text-gray-700">Company:</label>
+                                <select id="companyId" name="companyId" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required>
+                                    <option value="">Select a company</option>
+                                    {companies.map(company => (
+                                        <option key={company.id} value={company.id}>{company.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                         <div>
+                            <label htmlFor="description" className="block text-sm font-bold text-gray-700">Description:</label>
+                            <textarea id="description" name="description" rows="3" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"></textarea>
+                        </div>
+                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                             <div>
+                                <label htmlFor="owner" className="block text-sm font-bold text-gray-700">Owner:</label>
+                                <input type="text" id="owner" name="owner" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
+                            </div>
+                            <div>
+                                <label htmlFor="repoUrl" className="block text-sm font-bold text-gray-700">Repository URL:</label>
+                                <input type="url" id="repoUrl" name="repoUrl" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
+                            </div>
+                        </div>
+                        <div>
+                            <button type="submit" className="bg-[--color-primary] hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                Add Application
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-2xl font-semibold text-gray-700">Existing Applications</h2>
+                        <div>
+                            <label htmlFor="company-filter" className="text-sm font-medium text-gray-700 mr-2">Filter by Company:</label>
+                            <select 
+                                id="company-filter" 
+                                value={filterCompany} 
+                                onChange={e => setFilterCompany(e.target.value)}
+                                className="shadow-sm appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            >
+                                <option value="">All Companies</option>
+                                {companies.map(company => (
+                                    <option key={company.id} value={company.id}>{company.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white">
+                             <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="py-2 px-4 border-b">Name</th>
+                                    <th className="py-2 px-4 border-b">Company</th>
+                                    <th className="py-2 px-4 border-b">Owner</th>
+                                    <th className="py-2 px-4 border-b">Repo</th>
+                                    <th className="py-2 px-4 border-b">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredApps.map(app => (
+                                    <tr key={app.id} className="hover:bg-gray-50">
+                                        <td className="py-2 px-4 border-b font-medium">{app.name}</td>
+                                        <td className="py-2 px-4 border-b">{app.company.name}</td>
+                                        <td className="py-2 px-4 border-b text-sm text-gray-600">{app.owner}</td>
+                                        <td className="py-2 px-4 border-b">
+                                            {app.repoUrl && <a href={app.repoUrl} target="_blank" className="text-blue-500 hover:underline">Link</a>}
+                                        </td>
+                                        <td className="py-2 px-4 border-b text-center">
+                                            <button onClick={() => setEditingApp(app)} className="text-blue-500 hover:underline">Edit</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <EditApplicationModal
+                    app={editingApp}
+                    companies={companies}
+                    onClose={() => setEditingApp(null)}
+                    onSave={handleSave}
+                />
             </div>
-            <button type="submit" class="bg-[--color-primary] hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                Add Application
-            </button>
-        </form>
-    </div>
+        );
+    };
 
-    <div class="bg-white p-6 rounded-lg shadow-md">
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Existing Applications</h2>
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="py-2 px-4 border-b">ID</th>
-                        <th class="py-2 px-4 border-b">Name</th>
-                        <th class="py-2 px-4 border-b">Company</th>
-                        <th class="py-2 px-4 border-b">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% applications.forEach(app => { %>
-                        <tr class="hover:bg-gray-50">
-                            <td class="py-2 px-4 border-b text-center"><%= app.id %></td>
-                            <td class="py-2 px-4 border-b"><%= app.name %></td>
-                            <td class="py-2 px-4 border-b"><%= app.company.name %></td>
-                            <td class="py-2 px-4 border-b text-center">
-                                <button onclick="openModal('<%= app.id %>', `<%= app.name %>`, '<%= app.companyId %>')" class="text-blue-500 hover:underline">Edit</button>
-                            </td>
-                        </tr>
-                    <% }) %>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</main>
+    const initialApps = <%- JSON.stringify(applications) %>;
+    const initialCompanies = <%- JSON.stringify(companies) %>;
 
-<%- include('_modal', { modalTitle: 'Edit Application', fieldsPartial: '_application-fields', item: null, companies: companies }) %>
-
-<script>
-    const modal = document.getElementById('edit-modal');
-    const form = document.getElementById('edit-form');
-    const nameInput = document.getElementById('editName');
-    const companySelect = document.getElementById('editCompanyId');
-
-    function openModal(appId, appName, companyId) {
-        form.action = `/admin/applications/${appId}/update`;
-        nameInput.value = appName;
-        companySelect.value = companyId;
-        modal.classList.remove('hidden');
-    }
-
-    function closeModal() {
-        modal.classList.add('hidden');
-    }
+    ReactDOM.render(
+        <ManageApplicationsPage initialApps={initialApps} initialCompanies={initialCompanies} />,
+        document.getElementById('manage-apps-root')
+    );
 </script>
 
 <%- include('../partials/footer') %>
