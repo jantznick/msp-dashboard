@@ -238,8 +238,10 @@ router.post('/changelogs/:id/approve', isAuthenticated, isAdmin, async (req, res
             }
         }
 
+        let finalCompany;
+
         if (action === 'create') {
-            await prisma.company.create({
+            finalCompany = await prisma.company.create({
                 data: {
                     name: newCompanyName,
                     ...updates
@@ -249,7 +251,7 @@ router.post('/changelogs/:id/approve', isAuthenticated, isAdmin, async (req, res
             if (!targetCompanyId) {
                 return res.status(400).json({ error: "Target company ID is required for merge." });
             }
-            await prisma.company.update({
+            finalCompany = await prisma.company.update({
                 where: { id: targetCompanyId },
                 data: updates
             });
@@ -259,7 +261,15 @@ router.post('/changelogs/:id/approve', isAuthenticated, isAdmin, async (req, res
 
         const updatedLog = await prisma.changeLog.update({
             where: { id },
-            data: { status: 'APPROVED' }
+            data: { 
+                status: 'APPROVED',
+                approvedBy: req.session.user.email,
+                approvedAt: new Date(),
+                actionTaken: action,
+                finalTargetCompanyId: finalCompany.id,
+                finalTargetCompanyName: finalCompany.name,
+                approvedFields: mergeFields.join(',')
+            }
         });
 
         res.json(updatedLog);
