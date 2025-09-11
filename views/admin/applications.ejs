@@ -1,0 +1,77 @@
+<%- include('../partials/header') %>
+
+<main class="container mx-auto mt-10 px-4">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Manage Applications</h1>
+
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Add New Application</h2>
+        <form action="/admin/applications" method="POST">
+            <div class="mb-4">
+                <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Application Name:</label>
+                <input type="text" id="name" name="name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+            </div>
+            <div class="mb-4">
+                <label for="companyId" class="block text-gray-700 text-sm font-bold mb-2">Company:</label>
+                <select id="companyId" name="companyId" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                    <option value="">Select a company</option>
+                    <% companies.forEach(company => { %>
+                        <option value="<%= company.id %>"><%= company.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <button type="submit" class="bg-[--color-primary] hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Add Application
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Existing Applications</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="py-2 px-4 border-b">ID</th>
+                        <th class="py-2 px-4 border-b">Name</th>
+                        <th class="py-2 px-4 border-b">Company</th>
+                        <th class="py-2 px-4 border-b">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% applications.forEach(app => { %>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-2 px-4 border-b text-center"><%= app.id %></td>
+                            <td class="py-2 px-4 border-b"><%= app.name %></td>
+                            <td class="py-2 px-4 border-b"><%= app.company.name %></td>
+                            <td class="py-2 px-4 border-b text-center">
+                                <button onclick="openModal('<%= app.id %>', `<%= app.name %>`, '<%= app.companyId %>')" class="text-blue-500 hover:underline">Edit</button>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<%- include('_modal', { modalTitle: 'Edit Application', fieldsPartial: '_application-fields', item: null, companies: companies }) %>
+
+<script>
+    const modal = document.getElementById('edit-modal');
+    const form = document.getElementById('edit-form');
+    const nameInput = document.getElementById('editName');
+    const companySelect = document.getElementById('editCompanyId');
+
+    function openModal(appId, appName, companyId) {
+        form.action = `/admin/applications/${appId}/update`;
+        nameInput.value = appName;
+        companySelect.value = companyId;
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+    }
+</script>
+
+<%- include('../partials/footer') %>

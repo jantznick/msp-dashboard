@@ -94,12 +94,23 @@ const productMap = {
     'traceable-api-security': { name: 'Traceable API Security', file: 'traceable-api-security.md' }
 };
 
-app.get('/products/:slug', (req, res) => {
+app.get('/products/:slug', async (req, res) => {
     const slug = req.params.slug;
     const product = productMap[slug];
 
     if (!product) {
         return res.status(404).send('Product not found');
+    }
+
+    let applications = [];
+    if (req.session.user) {
+        const user = await prisma.user.findUnique({
+            where: { id: req.session.user.id },
+            include: { company: { include: { applications: true } } }
+        });
+        if (user && user.company) {
+            applications = user.company.applications;
+        }
     }
 
     const filePath = path.join(__dirname, 'content/products', product.file);
@@ -113,17 +124,38 @@ app.get('/products/:slug', (req, res) => {
             title: product.name,
             productName: product.name,
             content: content,
+            applications,
             submitted: req.query.submitted
         });
     });
 });
 
-app.get('/add-users', (req, res) => {
-    res.render('add-users', { title: 'Add Users to a Tool', submitted: req.query.submitted });
+app.get('/add-users', async (req, res) => {
+    let applications = [];
+    if (req.session.user) {
+        const user = await prisma.user.findUnique({
+            where: { id: req.session.user.id },
+            include: { company: { include: { applications: true } } }
+        });
+        if (user && user.company) {
+            applications = user.company.applications;
+        }
+    }
+    res.render('add-users', { title: 'Add Users to a Tool', applications, submitted: req.query.submitted });
 });
 
-app.get('/request', (req, res) => {
-    res.render('request', { title: 'Request a Tool', submitted: req.query.submitted });
+app.get('/request', async (req, res) => {
+    let applications = [];
+    if (req.session.user) {
+        const user = await prisma.user.findUnique({
+            where: { id: req.session.user.id },
+            include: { company: { include: { applications: true } } }
+        });
+        if (user && user.company) {
+            applications = user.company.applications;
+        }
+    }
+    res.render('request', { title: 'Request a Tool', applications, submitted: req.query.submitted });
 });
 
 app.get('/admin', isAuthenticated, isAdmin, async (req, res) => {
@@ -133,6 +165,12 @@ app.get('/admin', isAuthenticated, isAdmin, async (req, res) => {
                 scriptJobs: {
                     orderBy: {
                         createdAt: 'desc'
+                    }
+                },
+                User: true,
+                application: {
+                    include: {
+                        company: true
                     }
                 }
             },
@@ -153,6 +191,132 @@ app.get('/admin', isAuthenticated, isAdmin, async (req, res) => {
     }
 });
 
+// Admin management routes
+app.get('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const companies = await prisma.company.findMany({
+            orderBy: { name: 'asc' }
+        });
+        res.render('admin/companies', { title: 'Manage Companies', companies });
+    } catch (error) {
+        console.error('Error fetching companies:', error);
+        res.status(500).send("Error fetching companies");
+    }
+});
+
+app.post('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
+    const { name } = req.body;
+    try {
+        await prisma.company.create({
+            data: { name }
+        });
+        res.redirect('/admin/companies');
+    } catch (error) {
+        console.error('Error creating company:', error);
+        // You might want to render the page again with an error message
+        res.status(500).send("Error creating company");
+    }
+});
+
+app.post('/admin/companies/:id/update', isAuthenticated, isAdmin, async (req, res) => {
+    const companyId = parseInt(req.params.id, 10);
+    const { name } = req.body;
+    try {
+        await prisma.company.update({
+            where: { id: companyId },
+            data: { name }
+        });
+        res.redirect('/admin/companies');
+    } catch (error) {
+        console.error(`Error updating company ${companyId}:`, error);
+        res.status(500).send("Error updating company");
+    }
+});
+
+app.get('/admin/applications', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const applications = await prisma.application.findMany({
+            include: { company: true },
+            orderBy: { name: 'asc' }
+        });
+        const companies = await prisma.company.findMany({
+            orderBy: { name: 'asc' }
+        });
+        res.render('admin/applications', { title: 'Manage Applications', applications, companies });
+    } catch (error) {
+        console.error('Error fetching applications:', error);
+        res.status(500).send("Error fetching applications");
+    }
+});
+
+app.post('/admin/applications', isAuthenticated, isAdmin, async (req, res) => {
+    const { name, companyId } = req.body;
+    try {
+        await prisma.application.create({
+            data: {
+                name,
+                companyId: parseInt(companyId, 10)
+            }
+        });
+        res.redirect('/admin/applications');
+    } catch (error) {
+        console.error('Error creating application:', error);
+        res.status(500).send("Error creating application");
+    }
+});
+
+app.post('/admin/applications/:id/update', isAuthenticated, isAdmin, async (req, res) => {
+    const appId = parseInt(req.params.id, 10);
+    const { name, companyId } = req.body;
+    try {
+        await prisma.application.update({
+            where: { id: appId },
+            data: {
+                name,
+                companyId: parseInt(companyId, 10)
+            }
+        });
+        res.redirect('/admin/applications');
+    } catch (error) {
+        console.error(`Error updating application ${appId}:`, error);
+        res.status(500).send("Error updating application");
+    }
+});
+
+app.get('/admin/users', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({
+            include: { company: true },
+            orderBy: { email: 'asc' }
+        });
+        const companies = await prisma.company.findMany({
+            orderBy: { name: 'asc' }
+        });
+        res.render('admin/users', { title: 'Manage Users', users, companies });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send("Error fetching users");
+    }
+});
+
+app.post('/admin/users/:id/update', isAuthenticated, isAdmin, async (req, res) => {
+    const userId = parseInt(req.params.id, 10);
+    const { companyId } = req.body;
+    try {
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                companyId: companyId ? parseInt(companyId, 10) : null
+            }
+        });
+        res.redirect('/admin/users');
+    } catch (error) {
+        console.error(`Error updating user ${userId}:`, error);
+        res.status(500).send("Error updating user");
+    }
+});
+
+
 app.get('/api/requests', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const requests = await prisma.request.findMany({
@@ -160,6 +324,12 @@ app.get('/api/requests', isAuthenticated, isAdmin, async (req, res) => {
                 scriptJobs: {
                     orderBy: {
                         createdAt: 'desc'
+                    }
+                },
+                User: true,
+                application: {
+                    include: {
+                        company: true
                     }
                 }
             },
@@ -217,10 +387,68 @@ app.get('/my-requests', isAuthenticated, async (req, res) => {
     }
 });
 
+app.get('/my-applications', isAuthenticated, async (req, res) => {
+    if (res.locals.isAdmin) {
+        return res.redirect('/admin/applications');
+    }
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.session.user.id },
+            include: {
+                company: {
+                    include: {
+                        applications: true
+                    }
+                }
+            }
+        });
+
+        if (user && user.company) {
+            res.render('my-applications', {
+                title: 'My Applications',
+                company: user.company,
+                applications: user.company.applications
+            });
+        } else {
+            res.render('my-applications', {
+                title: 'My Applications',
+                company: null,
+                applications: []
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching user applications:', error);
+        res.status(500).send("Error fetching applications");
+    }
+});
+
+app.post('/my-applications/add', isAuthenticated, async (req, res) => {
+    const { name } = req.body;
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.session.user.id }
+        });
+
+        if (!user || !user.companyId) {
+            return res.status(403).send("You are not assigned to a company.");
+        }
+
+        await prisma.application.create({
+            data: {
+                name,
+                companyId: user.companyId
+            }
+        });
+        res.redirect('/my-applications');
+    } catch (error) {
+        console.error('Error creating application for user:', error);
+        res.status(500).send("Error creating application");
+    }
+});
+
 app.post('/request', async (req, res) => {
     try {
-        const { companyName, contactPerson, email, product, products, requestType, users, notes } = req.body;
-        const source = req.get('Referer');
+        const { email, product, products, requestType, users, notes, applicationId } = req.body;
 
         // Determine which products to save. Can come from a single-product page or a multi-product form.
         let productsData = product; // From product-detail form (name="product")
@@ -228,24 +456,29 @@ app.post('/request', async (req, res) => {
             productsData = Array.isArray(products) ? products.join(', ') : products;
         }
 
-        // Try to find an existing user by the provided email
-        const user = await prisma.user.findUnique({
-            where: { email }
-        });
+        let requestUser = null;
+        let userEmail = email;
 
+        if (req.session.user) {
+            // User is logged in
+            requestUser = await prisma.user.findUnique({ where: { id: req.session.user.id } });
+            userEmail = requestUser.email;
+        } else {
+            // Guest user, find or create a temporary reference
+            requestUser = await prisma.user.findUnique({ where: { email: userEmail } });
+        }
+        
         const newRequest = await prisma.request.create({
             data: {
-                companyName,
-                contactPerson,
-                email,
                 product: productsData || 'N/A',
                 requestType,
                 users,
                 notes,
-                userId: user ? user.id : null
+                userId: requestUser ? requestUser.id : null,
+                applicationId: applicationId ? parseInt(applicationId, 10) : null
             }
         });
-
+        
         const transporter = nodemailer.createTransport({
             host: process.env.EMAIL_HOST,
             port: process.env.EMAIL_PORT,
@@ -260,7 +493,7 @@ app.post('/request', async (req, res) => {
             from: process.env.EMAIL_FROM,
             to: process.env.EMAIL_TO,
             subject: 'New AppSec Tool Request',
-            html: `<h1>New Tool Request</h1><p><strong>Company:</strong> ${companyName}</p><p><strong>Contact:</strong> ${contactPerson} (${email})</p><p><strong>Product:</strong> ${productsData || 'N/A'}</p><p><strong>Request Type:</strong> ${requestType}</p><p><strong>Users:</strong> ${users || 'N/A'}</p><p><strong>Notes:</strong> ${notes || 'N/A'}</p>`
+            html: `<h1>New Tool Request</h1><p><strong>Requestor Email:</strong> ${userEmail}</p><p><strong>Product:</strong> ${productsData || 'N/A'}</p><p><strong>Request Type:</strong> ${requestType}</p><p><strong>Users:</strong> ${users || 'N/A'}</p><p><strong>Notes:</strong> ${notes || 'N/A'}</p>`
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
@@ -296,7 +529,8 @@ app.post('/api/create-jira-ticket', isAuthenticated, isAdmin, async (req, res) =
 
   try {
     const requestDetails = await prisma.request.findUnique({
-      where: { id: parseInt(requestId, 10) }
+      where: { id: parseInt(requestId, 10) },
+      include: { User: true, application: { include: { company: true } } }
     });
 
     if (!requestDetails) {
@@ -317,7 +551,7 @@ app.post('/api/create-jira-ticket', isAuthenticated, isAdmin, async (req, res) =
           key: jiraProjectKey
         },
         summary: `New AppSec Catalog Request: ${requestDetails.product}`,
-        description: `A new tool request has been submitted.\n\n- Company: ${requestDetails.companyName}\n- Contact: ${requestDetails.contactPerson} (${requestDetails.email})\n- Request Type: ${requestDetails.requestType}\n- Product: ${requestDetails.product}\n- Users: ${requestDetails.users || 'N/A'}\n- User Notes: ${requestDetails.notes || 'N/A'}\n- Admin Notes: ${requestDetails.adminNotes || 'N/A'}`,
+        description: `A new tool request has been submitted.\n\n- Requestor: ${requestDetails.User ? requestDetails.User.email : 'N/A'}\n- Company: ${requestDetails.application && requestDetails.application.company ? requestDetails.application.company.name : 'N/A'}\n- Application: ${requestDetails.application ? requestDetails.application.name : 'N/A'}\n- Request Type: ${requestDetails.requestType}\n- Product: ${requestDetails.product}\n- Users: ${requestDetails.users || 'N/A'}\n- User Notes: ${requestDetails.notes || 'N/A'}\n- Admin Notes: ${requestDetails.adminNotes || 'N/A'}`,
         issuetype: {
           name: "Story" 
         }

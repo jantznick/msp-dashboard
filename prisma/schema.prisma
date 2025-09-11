@@ -16,23 +16,39 @@ model User {
   password  String
   createdAt DateTime  @default(now())
   requests  Request[]
+  company   Company?  @relation(fields: [companyId], references: [id])
+  companyId Int?
+}
+
+model Company {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  users        User[]
+  applications Application[]
+}
+
+model Application {
+  id        Int       @id @default(autoincrement())
+  name      String
+  company   Company   @relation(fields: [companyId], references: [id])
+  companyId Int
+  requests  Request[]
 }
 
 model Request {
-  id            Int        @id @default(autoincrement())
-  timestamp     DateTime   @default(now())
-  companyName   String
-  contactPerson String
-  email         String
+  id            Int          @id @default(autoincrement())
+  timestamp     DateTime     @default(now())
   product       String
   requestType   String
   users         String?
   notes         String?
   adminNotes    String?
-  status        String     @default("NEW") // NEW, IN_PROGRESS, COMPLETED
+  status        String       @default("NEW") // NEW, IN_PROGRESS, COMPLETED
   scriptJobs    ScriptJob[]
-  User          User?      @relation(fields: [userId], references: [id])
+  User          User?        @relation(fields: [userId], references: [id])
   userId        Int?
+  application   Application? @relation(fields: [applicationId], references: [id])
+  applicationId Int?
 }
 
 model Session {
