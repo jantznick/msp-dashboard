@@ -11,48 +11,65 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
+  id        String    @id @default(cuid())
   email     String    @unique
   password  String
-  createdAt DateTime  @default(now())
   requests  Request[]
+  companyId String?
   company   Company?  @relation(fields: [companyId], references: [id])
-  companyId Int?
 }
 
 model Company {
-  id           Int           @id @default(autoincrement())
+  id           String        @id @default(cuid())
   name         String        @unique
-  domains      String?       // Comma-separated list of email domains
   users        User[]
   applications Application[]
+  domains      String? // Comma-separated list of domains
 }
 
 model Application {
-  id          Int       @id @default(autoincrement())
+  id          String    @id @default(cuid())
   name        String
   description String?
   owner       String?
   repoUrl     String?
+  companyId   String
   company     Company   @relation(fields: [companyId], references: [id])
-  companyId   Int
   requests    Request[]
+
+  language            String?
+  framework           String?
+  serverEnvironment   String? // cloud vs on-prem
+  facing              String? // external/internal
+  deploymentType      String? // scheduled, ad-hoc
+  authProfiles        String?
+  dataTypes           String? // PII, PCI, etc.
 }
 
 model Request {
-  id            Int          @id @default(autoincrement())
-  timestamp     DateTime     @default(now())
-  product       String
+  id            Int         @id @default(autoincrement())
+  products      String
   requestType   String
   users         String?
   notes         String?
   adminNotes    String?
-  status        String       @default("NEW") // NEW, IN_PROGRESS, COMPLETED
-  scriptJobs    ScriptJob[]
-  User          User?        @relation(fields: [userId], references: [id])
-  userId        Int?
+  status        String      @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  createdAt     DateTime    @default(now())
+  userId        String?
+  User          User?       @relation(fields: [userId], references: [id])
+  applicationId String?
   application   Application? @relation(fields: [applicationId], references: [id])
-  applicationId Int?
+  scriptJobs    ScriptJob[]
+}
+
+model ScriptJob {
+  id        Int      @id @default(autoincrement())
+  requestId Int
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  status    String // RUNNING, COMPLETED, FAILED
+  output    String
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
 }
 
 model Session {
@@ -60,15 +77,4 @@ model Session {
   sid       String   @unique
   data      String
   expiresAt DateTime
-}
-
-model ScriptJob {
-  id          Int       @id @default(autoincrement())
-  createdAt   DateTime  @default(now())
-  completedAt DateTime?
-  scriptName  String
-  status      String // PENDING, RUNNING, COMPLETED, FAILED
-  logFile     String
-  request     Request   @relation(fields: [requestId], references: [id])
-  requestId   Int
 }

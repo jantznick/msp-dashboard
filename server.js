@@ -213,7 +213,7 @@ app.get('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
 app.post('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
     const { name, domains } = req.body;
     try {
-        const company = await prisma.company.create({
+        const newCompany = await prisma.company.create({
             data: { name, domains }
         });
 
@@ -223,10 +223,10 @@ app.post('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
             for (const domain of domainList) {
                 await prisma.user.updateMany({
                     where: {
-                        email: { endsWith: `@${domain}` },
+                        email: { endsWith: '@' + domain },
                         companyId: null
                     },
-                    data: { companyId: company.id }
+                    data: { companyId: newCompany.id }
                 });
             }
         }
@@ -240,31 +240,32 @@ app.post('/admin/companies', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 app.post('/admin/companies/:id/update', isAuthenticated, isAdmin, async (req, res) => {
-    const companyId = parseInt(req.params.id, 10);
-    const { name, domains } = req.body;
     try {
-        await prisma.company.update({
-            where: { id: companyId },
-            data: { name, domains }
+        const updatedCompany = await prisma.company.update({
+            where: { id: req.params.id },
+            data: {
+                name: req.body.name,
+                domains: req.body.domains
+            }
         });
 
         // Retroactively assign users
-        if (domains) {
-            const domainList = domains.split(',').map(d => d.trim());
+        if (req.body.domains) {
+            const domainList = req.body.domains.split(',').map(d => d.trim());
             for (const domain of domainList) {
                 await prisma.user.updateMany({
                     where: {
                         email: { endsWith: `@${domain}` },
                         companyId: null
                     },
-                    data: { companyId: companyId }
+                    data: { companyId: updatedCompany.id }
                 });
             }
         }
 
         res.redirect('/admin/companies');
     } catch (error) {
-        console.error(`Error updating company ${companyId}:`, error);
+        console.error(`Error updating company ${req.params.id}:`, error);
         res.status(500).send("Error updating company");
     }
 });
@@ -286,15 +287,22 @@ app.get('/admin/applications', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 app.post('/admin/applications', isAuthenticated, isAdmin, async (req, res) => {
-    const { name, companyId, description, owner, repoUrl } = req.body;
+    const { name, companyId, description, owner, repoUrl, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes } = req.body;
     try {
         await prisma.application.create({
             data: {
                 name,
-                companyId: parseInt(companyId, 10),
+                companyId,
                 description,
                 owner,
-                repoUrl
+                repoUrl,
+                language,
+                framework,
+                serverEnvironment,
+                facing,
+                deploymentType,
+                authProfiles,
+                dataTypes
             }
         });
         res.redirect('/admin/applications');
@@ -305,23 +313,55 @@ app.post('/admin/applications', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 app.post('/admin/applications/:id/update', isAuthenticated, isAdmin, async (req, res) => {
-    const appId = parseInt(req.params.id, 10);
-    const { name, companyId, description, owner, repoUrl } = req.body;
     try {
-        await prisma.application.update({
-            where: { id: appId },
+        const updatedApplication = await prisma.application.update({
+            where: { id: req.params.id },
             data: {
-                name,
-                companyId: parseInt(companyId, 10),
-                description,
-                owner,
-                repoUrl
+                name: req.body.name,
+                companyId: req.body.companyId,
+                description: req.body.description,
+                owner: req.body.owner,
+                repoUrl: req.body.repoUrl,
+                language: req.body.language,
+                framework: req.body.framework,
+                serverEnvironment: req.body.serverEnvironment,
+                facing: req.body.facing,
+                deploymentType: req.body.deploymentType,
+                authProfiles: req.body.authProfiles,
+                dataTypes: req.body.dataTypes
             }
         });
         res.redirect('/admin/applications');
     } catch (error) {
-        console.error(`Error updating application ${appId}:`, error);
+        console.error(`Error updating application ${req.params.id}:`, error);
         res.status(500).send("Error updating application");
+    }
+});
+
+app.post('/api/applications/:id/update', isAuthenticated, async (req, res) => {
+    const appId = req.params.id;
+    const { name, description, owner, repoUrl, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes } = req.body;
+    try {
+        const user = await prisma.user.findUnique({ where: { id: req.session.user.id } });
+        const application = await prisma.application.findUnique({ where: { id: appId } });
+
+        // Security check: User must be an admin OR belong to the same company as the application
+        const isAdmin = res.locals.isAdmin;
+        const isOwner = user && application && user.companyId === application.companyId;
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ error: "You do not have permission to edit this application." });
+        }
+
+        const updatedApplication = await prisma.application.update({
+            where: { id: appId },
+            data: { name, description, owner, repoUrl, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes },
+            include: { company: true } // Include company to send back full data
+        });
+        res.json(updatedApplication);
+    } catch (error) {
+        console.error(`Error updating application ${appId} by user ${req.session.user.id}:`, error);
+        res.status(500).json({ error: "Error updating application" });
     }
 });
 
@@ -342,18 +382,16 @@ app.get('/admin/users', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 app.post('/admin/users/:id/update', isAuthenticated, isAdmin, async (req, res) => {
-    const userId = parseInt(req.params.id, 10);
-    const { companyId } = req.body;
     try {
-        await prisma.user.update({
-            where: { id: userId },
+        const updatedUser = await prisma.user.update({
+            where: { id: req.params.id },
             data: {
-                companyId: companyId ? parseInt(companyId, 10) : null
+                companyId: req.body.companyId || null
             }
         });
         res.redirect('/admin/users');
     } catch (error) {
-        console.error(`Error updating user ${userId}:`, error);
+        console.error(`Error updating user ${req.params.id}:`, error);
         res.status(500).send("Error updating user");
     }
 });
@@ -465,26 +503,31 @@ app.get('/my-applications', isAuthenticated, async (req, res) => {
 });
 
 app.post('/my-applications/add', isAuthenticated, async (req, res) => {
-    const { name } = req.body;
+    const { name, description, owner, repoUrl, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes } = req.body;
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: req.session.user.id }
-        });
-
-        if (!user || !user.companyId) {
-            return res.status(403).send("You are not assigned to a company.");
+        if (!req.session.user.companyId) {
+            return res.status(403).send("You are not associated with a company.");
         }
-
         await prisma.application.create({
             data: {
                 name,
-                companyId: user.companyId
+                companyId: req.session.user.companyId,
+                description,
+                owner,
+                repoUrl,
+                language,
+                framework,
+                serverEnvironment,
+                facing,
+                deploymentType,
+                authProfiles,
+                dataTypes
             }
         });
         res.redirect('/my-applications');
     } catch (error) {
-        console.error('Error creating application for user:', error);
-        res.status(500).send("Error creating application");
+        console.error(`Error adding application for company ${req.session.user.companyId}:`, error);
+        res.status(500).send("Error adding application");
     }
 });
 

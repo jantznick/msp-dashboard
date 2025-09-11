@@ -124,7 +124,6 @@
                         <table className="min-w-full bg-white">
                             <thead className="bg-gray-100">
                                 <tr>
-                                    <th className="py-2 px-4 border-b">ID</th>
                                     <th className="py-2 px-4 border-b">Name</th>
                                     <th className="py-2 px-4 border-b">Domains</th>
                                     <th className="py-2 px-4 border-b">Actions</th>
@@ -133,7 +132,6 @@
                             <tbody>
                                 {companies.map(company => (
                                     <tr key={company.id} className="hover:bg-gray-50">
-                                        <td className="py-2 px-4 border-b text-center">{company.id}</td>
                                         <td className="py-2 px-4 border-b">{company.name}</td>
                                         <td className="py-2 px-4 border-b text-sm text-gray-500">{company.domains}</td>
                                         <td className="py-2 px-4 border-b text-center">

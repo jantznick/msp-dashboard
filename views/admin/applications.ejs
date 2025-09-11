@@ -18,12 +18,22 @@
         const [description, setDescription] = useState(app.description || '');
         const [owner, setOwner] = useState(app.owner || '');
         const [repoUrl, setRepoUrl] = useState(app.repoUrl || '');
+        const [language, setLanguage] = useState(app.language || '');
+        const [framework, setFramework] = useState(app.framework || '');
+        const [serverEnvironment, setServerEnvironment] = useState(app.serverEnvironment || '');
+        const [facing, setFacing] = useState(app.facing || '');
+        const [deploymentType, setDeploymentType] = useState(app.deploymentType || '');
+        const [authProfiles, setAuthProfiles] = useState(app.authProfiles || '');
+        const [dataTypes, setDataTypes] = useState(app.dataTypes || '');
         const [isSaving, setIsSaving] = useState(false);
 
         const handleSubmit = async (e) => {
             e.preventDefault();
             setIsSaving(true);
-            await onSave(app.id, { name, companyId, description, owner, repoUrl });
+            await onSave(app.id, { 
+                name, companyId, description, owner, repoUrl, language, framework, 
+                serverEnvironment, facing, deploymentType, authProfiles, dataTypes 
+            });
             setIsSaving(false);
             onClose();
         };
@@ -62,6 +72,38 @@
                                         <input type="url" id="editRepoUrl" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                                     </div>
                                 </div>
+                                <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3">
+                                    <div>
+                                        <label htmlFor="editLanguage" className="block text-sm font-medium text-gray-700">Language</label>
+                                        <input type="text" id="editLanguage" value={language} onChange={(e) => setLanguage(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editFramework" className="block text-sm font-medium text-gray-700">Framework</label>
+                                        <input type="text" id="editFramework" value={framework} onChange={(e) => setFramework(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editServerEnvironment" className="block text-sm font-medium text-gray-700">Server Environment</label>
+                                        <input type="text" id="editServerEnvironment" value={serverEnvironment} onChange={(e) => setServerEnvironment(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. AWS, On-prem" />
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                                    <div>
+                                        <label htmlFor="editFacing" className="block text-sm font-medium text-gray-700">Facing</label>
+                                        <input type="text" id="editFacing" value={facing} onChange={(e) => setFacing(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. Internal, External" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editDeploymentType" className="block text-sm font-medium text-gray-700">Deployment Type</label>
+                                        <input type="text" id="editDeploymentType" value={deploymentType} onChange={(e) => setDeploymentType(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. Scheduled, Ad-hoc" />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="editAuthProfiles" className="block text-sm font-medium text-gray-700">Necessary Auth Profiles</label>
+                                    <input type="text" id="editAuthProfiles" value={authProfiles} onChange={(e) => setAuthProfiles(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="editDataTypes" className="block text-sm font-medium text-gray-700">Data Types Collected/Stored</label>
+                                    <input type="text" id="editDataTypes" value={dataTypes} onChange={(e) => setDataTypes(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. PII, PCI" />
+                                </div>
                             </div>
                             <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                                 <button type="submit" disabled={isSaving} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
@@ -83,6 +125,7 @@
         const [companies] = useState(initialCompanies);
         const [editingApp, setEditingApp] = useState(null);
         const [filterCompany, setFilterCompany] = useState('');
+        const [expandedAppId, setExpandedAppId] = useState(null);
         
         const getCompanyName = (companyId) => {
             const company = companies.find(c => c.id === companyId);
@@ -97,7 +140,7 @@
                     body: JSON.stringify(data)
                 });
                 if (response.ok) {
-                    setApplications(applications.map(a => a.id === appId ? { ...a, ...data, company: { name: getCompanyName(parseInt(data.companyId, 10)) } } : a));
+                    setApplications(applications.map(a => a.id === appId ? { ...a, ...data, company: { name: getCompanyName(data.companyId) } } : a));
                 } else {
                     alert('Failed to save application.');
                 }
@@ -107,7 +150,7 @@
         };
 
         const filteredApps = filterCompany 
-            ? applications.filter(app => app.companyId === parseInt(filterCompany, 10))
+            ? applications.filter(app => app.companyId === filterCompany)
             : applications;
 
         return (
@@ -146,6 +189,38 @@
                                 <input type="url" id="repoUrl" name="repoUrl" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
                             </div>
                         </div>
+                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3 mt-4">
+                             <div>
+                                <label htmlFor="language" className="block text-sm font-bold text-gray-700">Language:</label>
+                                <input type="text" id="language" name="language" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
+                            </div>
+                            <div>
+                                <label htmlFor="framework" className="block text-sm font-bold text-gray-700">Framework:</label>
+                                <input type="text" id="framework" name="framework" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
+                            </div>
+                             <div>
+                                <label htmlFor="serverEnvironment" className="block text-sm font-bold text-gray-700">Server Environment:</label>
+                                <input type="text" id="serverEnvironment" name="serverEnvironment" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. AWS, On-prem" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2 mt-4">
+                            <div>
+                                <label htmlFor="facing" className="block text-sm font-bold text-gray-700">Facing:</label>
+                                <input type="text" id="facing" name="facing" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Internal, External" />
+                            </div>
+                            <div>
+                                <label htmlFor="deploymentType" className="block text-sm font-bold text-gray-700">Deployment Type:</label>
+                                <input type="text" id="deploymentType" name="deploymentType" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Scheduled, Ad-hoc" />
+                            </div>
+                        </div>
+                        <div className="mt-4">
+                            <label htmlFor="authProfiles" className="block text-sm font-bold text-gray-700">Necessary Auth Profiles:</label>
+                            <input type="text" id="authProfiles" name="authProfiles" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
+                        </div>
+                        <div className="mt-4">
+                            <label htmlFor="dataTypes" className="block text-sm font-bold text-gray-700">Data Types Collected/Stored:</label>
+                            <input type="text" id="dataTypes" name="dataTypes" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. PII, PCI" />
+                        </div>
                         <div>
                             <button type="submit" className="bg-[--color-primary] hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                                 Add Application
@@ -178,24 +253,76 @@
                                 <tr>
                                     <th className="py-2 px-4 border-b">Name</th>
                                     <th className="py-2 px-4 border-b">Company</th>
-                                    <th className="py-2 px-4 border-b">Owner</th>
-                                    <th className="py-2 px-4 border-b">Repo</th>
                                     <th className="py-2 px-4 border-b">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredApps.map(app => (
-                                    <tr key={app.id} className="hover:bg-gray-50">
-                                        <td className="py-2 px-4 border-b font-medium">{app.name}</td>
-                                        <td className="py-2 px-4 border-b">{app.company.name}</td>
-                                        <td className="py-2 px-4 border-b text-sm text-gray-600">{app.owner}</td>
-                                        <td className="py-2 px-4 border-b">
-                                            {app.repoUrl && <a href={app.repoUrl} target="_blank" className="text-blue-500 hover:underline">Link</a>}
-                                        </td>
-                                        <td className="py-2 px-4 border-b text-center">
-                                            <button onClick={() => setEditingApp(app)} className="text-blue-500 hover:underline">Edit</button>
-                                        </td>
-                                    </tr>
+                                    <React.Fragment key={app.id}>
+                                        <tr onClick={() => setExpandedAppId(expandedAppId === app.id ? null : app.id)} className="hover:bg-gray-50 cursor-pointer">
+                                            <td className="py-2 px-4 border-b font-medium">{app.name}</td>
+                                            <td className="py-2 px-4 border-b">{app.company.name}</td>
+                                            <td className="py-2 px-4 border-b text-center">
+                                                <button onClick={(e) => { e.stopPropagation(); setEditingApp(app); }} className="text-blue-500 hover:underline">Edit</button>
+                                            </td>
+                                        </tr>
+                                        {expandedAppId === app.id && (
+                                            <tr>
+                                                <td colSpan="3" className="p-4 bg-gray-50">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-700">Description</h4>
+                                                            <p className="text-gray-600 mt-1">{app.description || 'N/A'}</p>
+                                                        </div>
+                                                         <div>
+                                                            <h4 className="font-semibold text-gray-700">Owner</h4>
+                                                            <p className="text-gray-600 mt-1">{app.owner || 'N/A'}</p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-700">Repository</h4>
+                                                            {app.repoUrl ? (
+                                                                <a href={app.repoUrl} target="_blank" className="text-blue-500 hover:underline mt-1 block">{app.repoUrl}</a>
+                                                            ) : (
+                                                                <p className="text-gray-600 mt-1">N/A</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mt-4 pt-4 border-t">
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-700">Language</h4>
+                                                            <p className="text-gray-600 mt-1">{app.language || 'N/A'}</p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-700">Framework</h4>
+                                                            <p className="text-gray-600 mt-1">{app.framework || 'N/A'}</p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-700">Server Environment</h4>
+                                                            <p className="text-gray-600 mt-1">{app.serverEnvironment || 'N/A'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t">
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-700">Facing</h4>
+                                                            <p className="text-gray-600 mt-1">{app.facing || 'N/A'}</p>
+                                                        </div>
+                                                         <div>
+                                                            <h4 className="font-semibold text-gray-700">Deployment Type</h4>
+                                                            <p className="text-gray-600 mt-1">{app.deploymentType || 'N/A'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-4 pt-4 border-t text-sm">
+                                                        <h4 className="font-semibold text-gray-700">Necessary Auth Profiles</h4>
+                                                        <p className="text-gray-600 mt-1">{app.authProfiles || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="mt-4 pt-4 border-t text-sm">
+                                                        <h4 className="font-semibold text-gray-700">Data Types Collected/Stored</h4>
+                                                        <p className="text-gray-600 mt-1">{app.dataTypes || 'N/A'}</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
                                 ))}
                             </tbody>
                         </table>
