@@ -106,6 +106,7 @@
         const [companies, setCompanies] = useState(initialCompanies);
         const [editingCompany, setEditingCompany] = useState(null);
         const [expandedCompanyId, setExpandedCompanyId] = useState(null);
+        const [copiedLink, setCopiedLink] = useState(null);
 
         const handleSave = async (companyId, data) => {
             try {
@@ -125,6 +126,16 @@
                 console.error('Save error:', error);
                 alert('An error occurred while saving.');
             }
+        };
+        
+        const copyToClipboard = (companyId) => {
+            const link = `${window.location.origin}/intake/application?company=${companyId}`;
+            navigator.clipboard.writeText(link).then(() => {
+                setCopiedLink(companyId);
+                setTimeout(() => setCopiedLink(null), 2000); // Reset after 2 seconds
+            }, (err) => {
+                alert('Failed to copy link.');
+            });
         };
 
         return (
@@ -168,8 +179,11 @@
                                             <td className="py-2 px-4 border-b">{company.name}</td>
                                             <td className="py-2 px-4 border-b text-sm text-gray-500">{company.domains || 'N/A'}</td>
                                             <td className="py-2 px-4 border-b text-sm text-gray-500">{company.engManager || 'N/A'}</td>
-                                            <td className="py-2 px-4 border-b text-center">
+                                            <td className="py-2 px-4 border-b text-center space-x-2">
                                                 <button onClick={(e) => { e.stopPropagation(); setEditingCompany(company); }} className="text-blue-500 hover:underline">Edit</button>
+                                                <button onClick={(e) => { e.stopPropagation(); copyToClipboard(company.id); }} className="text-green-500 hover:underline">
+                                                    {copiedLink === company.id ? 'Copied!' : 'Copy Link'}
+                                                </button>
                                             </td>
                                         </tr>
                                         {expandedCompanyId === company.id && (

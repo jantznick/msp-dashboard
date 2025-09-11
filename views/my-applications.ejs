@@ -138,6 +138,7 @@
         const [company] = useState(initialCompany);
         const [expandedAppId, setExpandedAppId] = useState(null);
         const [editingApp, setEditingApp] = useState(null);
+        const [copySuccess, setCopySuccess] = useState('');
 
         if (!company) {
              return (
@@ -153,12 +154,29 @@
             setApplications(applications.map(app => app.id === updatedApp.id ? updatedApp : app));
             setEditingApp(null);
         };
+        
+        const copyToClipboard = () => {
+            if (!company) return;
+            const link = `${window.location.origin}/intake/application?company=${company.id}`;
+            navigator.clipboard.writeText(link).then(() => {
+                setCopySuccess('Link copied to clipboard!');
+                setTimeout(() => setCopySuccess(''), 2000); // Reset after 2 seconds
+            }, () => {
+                alert('Failed to copy the link.');
+            });
+        };
 
         return (
             <div>
                 <div class="text-center mb-8">
                     <h1 class="text-4xl font-bold text-[secondary] mb-2">My Company's Applications</h1>
                     <p class="text-xl text-gray-600">Company: <span class="font-semibold">{company.name}</span></p>
+                    <div className="mt-4">
+                        <button onClick={copyToClipboard} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline text-sm">
+                            Share Application Intake Link
+                        </button>
+                        {copySuccess && <span className="ml-3 text-green-600">{copySuccess}</span>}
+                    </div>
                 </div>
 
                 <div className="bg-white p-6 rounded-lg shadow-md mb-8">

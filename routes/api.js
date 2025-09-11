@@ -196,81 +196,92 @@ router.post('/applications/:id/update', async (req, res) => {
     }
 });
 
-router.get('/changelogs', isAdmin, async (req, res) => {
+router.get('/changelogs', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const logs = await prisma.changeLog.findMany({
-            where: { status: 'PENDING' },
             orderBy: { createdAt: 'desc' }
         });
-        const companies = await prisma.company.findMany({ orderBy: { name: 'asc' } });
-        res.json({ logs, companies });
+        res.json(logs);
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching change logs' });
+        console.error('Error fetching change logs API:', error);
+        res.status(500).json({ error: 'Failed to fetch change logs.' });
     }
 });
 
-router.post('/changelogs/:id/approve', isAdmin, async (req, res) => {
-    const logId = parseInt(req.params.id, 10);
-    const { action, targetCompanyId, fieldsToMerge } = req.body;
+router.get('/companies', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const companies = await prisma.company.findMany({
+            orderBy: { name: 'asc' }
+        });
+        res.json(companies);
+    } catch (error) {
+        console.error('Error fetching companies API:', error);
+        res.status(500).json({ error: 'Failed to fetch companies.' });
+    }
+});
+
+router.post('/changelogs/:id/approve', isAuthenticated, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { action, targetCompanyId, mergeFields, newCompanyName } = req.body;
 
     try {
-        const log = await prisma.changeLog.findUnique({ where: { id: logId } });
+        const log = await prisma.changeLog.findUnique({ where: { id } });
         if (!log || log.status !== 'PENDING') {
-            return res.status(404).json({ error: 'Log not found or already processed.' });
+            return res.status(404).json({ error: "Change log not found or already processed." });
         }
 
         const changes = JSON.parse(log.changeDetails);
+        const updates = {};
+        for (const field of mergeFields) {
+            if (changes[field] !== undefined) {
+                updates[field] = changes[field];
+            }
+        }
 
         if (action === 'create') {
             await prisma.company.create({
                 data: {
-                    name: log.proposedCompanyName,
-                    ...changes
+                    name: newCompanyName,
+                    ...updates
                 }
-            });
-        } else if (action === 'overwrite') {
-            await prisma.company.update({
-                where: { id: targetCompanyId },
-                data: changes
             });
         } else if (action === 'merge') {
-            const dataToUpdate = {};
-            for (const field of fieldsToMerge) {
-                if (changes.hasOwnProperty(field)) {
-                    dataToUpdate[field] = changes[field];
-                }
+            if (!targetCompanyId) {
+                return res.status(400).json({ error: "Target company ID is required for merge." });
             }
             await prisma.company.update({
                 where: { id: targetCompanyId },
-                data: dataToUpdate
+                data: updates
             });
         } else {
-            return res.status(400).json({ error: 'Invalid action.' });
+            return res.status(400).json({ error: "Invalid approval action." });
         }
-        
-        await prisma.changeLog.update({
-            where: { id: logId },
+
+        const updatedLog = await prisma.changeLog.update({
+            where: { id },
             data: { status: 'APPROVED' }
         });
 
-        res.json({ success: true });
+        res.json(updatedLog);
     } catch (error) {
         console.error('Error approving change log:', error);
-        res.status(500).json({ error: 'Failed to approve change.' });
+        res.status(500).json({ error: "Failed to approve change." });
     }
 });
 
-router.post('/changelogs/:id/reject', isAdmin, async (req, res) => {
-     const logId = parseInt(req.params.id, 10);
-     try {
-         await prisma.changeLog.update({
-             where: { id: logId },
-             data: { status: 'REJECTED' }
-         });
-         res.json({ success: true });
-     } catch (error) {
-         res.status(500).json({ error: 'Failed to reject change.' });
-     }
+router.post('/changelogs/:id/reject', isAuthenticated, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const updatedLog = await prisma.changeLog.update({
+            where: { id },
+            data: { status: 'REJECTED' }
+        });
+        res.json(updatedLog);
+    } catch (error) {
+        console.error('Error rejecting change log:', error);
+        res.status(500).json({ error: "Failed to reject change." });
+    }
 });
+
 
 module.exports = router;

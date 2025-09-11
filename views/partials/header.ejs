@@ -29,7 +29,9 @@
                                 </button>
                                 <div class="absolute z-10 hidden bg-white shadow-lg rounded-md mt-0 w-48 group-hover:block">
                                     <a href="/intake/manager" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Manager Intake</a>
+                                    <% if (user && user.companyId || isAdmin) { %>
                                     <a href="/intake/application" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Application Intake</a>
+                                    <% } %>
                                 </div>
                             </div>
 
