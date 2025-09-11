@@ -1,50 +1,239 @@
 <%- include('../partials/header') %>
 
-<div class="container mx-auto mt-10 px-4">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Unauthorized Company Changes</h1>
-    <p class="text-gray-600 mb-8">This log shows all changes submitted by logged-in users who are not yet assigned to the company they are modifying. You can use this log to verify changes and assign users to the correct company.</p>
+<!-- React via CDN -->
+<script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <div class="bg-white p-6 rounded-lg shadow-md">
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="py-2 px-4 border-b">Timestamp</th>
-                        <th class="py-2 px-4 border-b">User Email</th>
-                        <th class="py-2 px-4 border-b">Company Name</th>
-                        <th class="py-2 px-4 border-b">Changes Made</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% if (logs.length > 0) { %>
-                        <% logs.forEach(log => { %>
-                            <tr class="hover:bg-gray-50">
-                                <td class="py-2 px-4 border-b text-sm text-gray-500"><%= new Date(log.createdAt).toLocaleString() %></td>
-                                <td class="py-2 px-4 border-b text-sm"><%= log.userEmail %></td>
-                                <td class="py-2 px-4 border-b text-sm font-medium"><%= log.companyName %></td>
-                                <td class="py-2 px-4 border-b text-sm">
-                                    <ul>
-                                        <% JSON.parse(log.changeDetails).forEach(change => { %>
-                                            <li>
-                                                <span class="font-semibold"><%= change.key %>:</span>
-                                                <span class="text-gray-600">"<%= change.oldValue %>"</span>
-                                                <span class="text-gray-500 mx-1">→</span>
-                                                <span class="text-green-600">"<%= change.newValue %>"</span>
-                                            </li>
-                                        <% }); %>
-                                    </ul>
-                                </td>
-                            </tr>
-                        <% }); %>
-                    <% } else { %>
-                        <tr>
-                            <td colspan="4" class="text-center py-10 text-gray-500">No unauthorized changes have been logged.</td>
-                        </tr>
-                    <% } %>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+<div id="changelog-root" class="container mx-auto mt-10 px-4"></div>
+
+<script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const ApproveModal = ({ log, companies, onClose, onAction }) => {
+        if (!log) return null;
+
+        const changes = JSON.parse(log.changeDetails);
+        const [targetCompanyId, setTargetCompanyId] = useState(log.targetCompanyId || '');
+        const [fieldsToMerge, setFieldsToMerge] = useState([]);
+        const [isSaving, setIsSaving] = useState(false);
+
+        const handleMergeToggle = (field) => {
+            if (fieldsToMerge.includes(field)) {
+                setFieldsToMerge(fieldsToMerge.filter(f => f !== field));
+            } else {
+                setFieldsToMerge([...fieldsToMerge, field]);
+            }
+        };
+        
+        const handleAction = async (action) => {
+            if ((action === 'overwrite' || action === 'merge') && !targetCompanyId) {
+                alert('Please select a target company.');
+                return;
+            }
+            if (action === 'merge' && fieldsToMerge.length === 0) {
+                alert('Please select at least one field to merge.');
+                return;
+            }
+
+            setIsSaving(true);
+            await onAction(log.id, { action, targetCompanyId, fieldsToMerge });
+            setIsSaving(false);
+            onClose();
+        };
+
+        const renderChanges = (isMerge = false) => (
+            <ul className="space-y-2 text-sm">
+                {Object.entries(changes).map(([key, value]) => value && (
+                    <li key={key} className="flex items-center">
+                        {isMerge && (
+                            <input
+                                type="checkbox"
+                                checked={fieldsToMerge.includes(key)}
+                                onChange={() => handleMergeToggle(key)}
+                                className="h-4 w-4 text-blue-600 border-gray-300 rounded mr-3"
+                            />
+                        )}
+                        <span className="font-semibold text-gray-700 w-36">{key}:</span>
+                        <span className="text-gray-900 bg-gray-100 px-2 py-1 rounded">{value}</span>
+                    </li>
+                ))}
+            </ul>
+        );
+
+        return (
+            <div className="fixed z-50 inset-0 overflow-y-auto">
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+                    <div className="bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-4xl sm:w-full z-50">
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                Approve Change Request
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Submitted by: {log.userEmail} for {log.proposedCompanyName || log.companyName}
+                            </p>
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-b">
+                            {log.proposedCompanyName ? (
+                                <div>
+                                    <h4 className="font-semibold text-md mb-2">Create New Company</h4>
+                                    <p className="text-sm text-gray-600 mb-4">Create a new company named <strong>{log.proposedCompanyName}</strong> with the following details:</p>
+                                    {renderChanges()}
+                                    <button onClick={() => handleAction('create')} disabled={isSaving} className="mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50">
+                                        {isSaving ? 'Creating...' : 'Confirm & Create New Company'}
+                                    </button>
+                                </div>
+                            ) : null}
+                            
+                            <hr className="my-6"/>
+
+                            <div>
+                                <h4 className="font-semibold text-md mb-2">Apply to Existing Company</h4>
+                                <div className="mb-4">
+                                    <label htmlFor="targetCompany" className="block text-sm font-medium text-gray-700">Target Company:</label>
+                                    <select id="targetCompany" value={targetCompanyId} onChange={e => setTargetCompanyId(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md">
+                                        <option value="">Select a company...</option>
+                                        {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h5 className="font-semibold mb-2">Option A: Overwrite All Fields</h5>
+                                        <p className="text-sm text-gray-600 mb-4">Replace all corresponding fields in the target company with this new data.</p>
+                                        {renderChanges()}
+                                         <button onClick={() => handleAction('overwrite')} disabled={isSaving || !targetCompanyId} className="mt-4 px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:opacity-50">
+                                            {isSaving ? 'Saving...' : 'Overwrite Company'}
+                                        </button>
+                                    </div>
+                                     <div>
+                                        <h5 className="font-semibold mb-2">Option B: Merge Selected Fields</h5>
+                                         <p className="text-sm text-gray-600 mb-4">Select the fields you want to update in the target company.</p>
+                                        {renderChanges(true)}
+                                         <button onClick={() => handleAction('merge')} disabled={isSaving || !targetCompanyId || fieldsToMerge.length === 0} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                                            {isSaving ? 'Saving...' : 'Apply Selected Changes'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                            <button type="button" onClick={onClose} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white sm:mt-0 sm:w-auto">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const ChangeLogPage = () => {
+        const [logs, setLogs] = useState([]);
+        const [companies, setCompanies] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [selectedLog, setSelectedLog] = useState(null);
+
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch('/api/changelogs');
+                const data = await response.json();
+                setLogs(data.logs);
+                setCompanies(data.companies);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        useEffect(() => {
+            fetchData();
+        }, []);
+
+        const handleApprove = async (logId, data) => {
+            try {
+                await fetch(`/api/changelogs/${logId}/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+                fetchData(); // Refresh list
+            } catch (error) {
+                alert('An error occurred while approving.');
+            }
+        };
+        
+        const handleReject = async (logId) => {
+            if (confirm('Are you sure you want to reject this change?')) {
+                 try {
+                    await fetch(`/api/changelogs/${logId}/reject`, { method: 'POST' });
+                    fetchData(); // Refresh list
+                } catch (error) {
+                    alert('An error occurred while rejecting.');
+                }
+            }
+        };
+
+        if (loading) return <p>Loading...</p>;
+
+        return (
+            <div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-6">Review Submitted Changes</h1>
+                 <p className="text-gray-600 mb-8">Review and approve or reject changes submitted by users. Approved changes will be applied to the company profiles.</p>
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="py-2 px-4 border-b">Timestamp</th>
+                                    <th className="py-2 px-4 border-b">User</th>
+                                    <th className="py-2 px-4 border-b">Type</th>
+                                    <th className="py-2 px-4 border-b">Target</th>
+                                    <th className="py-2 px-4 border-b">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {logs.length > 0 ? logs.map(log => (
+                                    <tr key={log.id} className="hover:bg-gray-50">
+                                        <td className="py-2 px-4 border-b text-sm text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
+                                        <td className="py-2 px-4 border-b text-sm">{log.userEmail}</td>
+                                        <td className="py-2 px-4 border-b text-sm">
+                                            {log.proposedCompanyName ? 
+                                                <span className="font-semibold text-blue-600">New Company</span> : 
+                                                <span className="text-yellow-600">Update</span>
+                                            }
+                                        </td>
+                                        <td className="py-2 px-4 border-b text-sm font-medium">{log.proposedCompanyName || log.companyName}</td>
+                                        <td className="py-2 px-4 border-b text-sm space-x-2">
+                                            <button onClick={() => setSelectedLog(log)} className="text-green-600 font-semibold hover:underline">Approve</button>
+                                            <button onClick={() => handleReject(log.id)} className="text-red-600 font-semibold hover:underline">Reject</button>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan="5" className="text-center py-10 text-gray-500">No pending changes to review.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                 <ApproveModal 
+                    log={selectedLog}
+                    companies={companies}
+                    onClose={() => setSelectedLog(null)}
+                    onAction={handleApprove}
+                />
+            </div>
+        );
+    };
+
+    ReactDOM.render(<ChangeLogPage />, document.getElementById('changelog-root'));
+</script>
 
 <%- include('../partials/footer') %>

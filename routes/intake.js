@@ -13,77 +13,65 @@ router.get('/manager', async (req, res) => {
 });
 
 router.post('/manager', async (req, res) => {
-    const { companyId, otherCompanyName, companyName, engManager, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes } = req.body;
+    const { companyId, otherCompanyName, engManager, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes } = req.body;
     const metadata = { engManager, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes };
-
+    
     try {
         let company;
+        let successMessage = "Your submission was successful.";
+        let applicationFormUrl = null;
+
         if (req.session.user && req.session.user.companyId) {
+            // Associated users can update their own company directly.
             const { engManager: formEngManager, ...restMetadata } = metadata;
             company = await prisma.company.update({
                 where: { id: req.session.user.companyId },
                 data: restMetadata
             });
+            successMessage = "Your company information has been updated successfully.";
+            applicationFormUrl = `${req.protocol}://${req.get('host')}/intake/application?company=${company.id}`;
+        
         } else {
-            let oldCompanyData = null;
-            if (companyId && companyId !== 'other') {
-                oldCompanyData = await prisma.company.findUnique({ where: { id: companyId } });
-            } else if (otherCompanyName) {
-                oldCompanyData = await prisma.company.findUnique({ where: { name: otherCompanyName.trim() } });
-            }
+            // Unassociated users' submissions are logged for review.
+            const changes = Object.values(metadata).some(val => val);
 
-            if (companyId === 'other' && otherCompanyName) {
-                company = await prisma.company.upsert({
-                    where: { name: otherCompanyName.trim() },
-                    update: metadata,
-                    create: { name: otherCompanyName.trim(), ...metadata }
-                });
-            } else if (companyId) {
-                company = await prisma.company.update({
-                    where: { id: companyId },
-                    data: metadata
-                });
+            if (!changes) {
+                 successMessage = "No new information was submitted.";
             } else {
-                return res.status(400).send("A company must be selected or created.");
-            }
-
-            if (req.session.user) {
-                const changes = Object.keys(metadata).map(key => {
-                    const oldValue = oldCompanyData ? (oldCompanyData[key] || "Not set") : "Not set";
-                    const newValue = metadata[key] || "Not set";
-                    return { key, oldValue, newValue };
-                }).filter(c => c.oldValue !== c.newValue && c.newValue !== "Not set");
-
-                if (changes.length > 0) {
+                if (companyId === 'other' && otherCompanyName) {
+                    // Log a "new company" suggestion.
                     await prisma.changeLog.create({
                         data: {
-                            userEmail: req.session.user.email,
-                            companyName: company.name,
-                            changeDetails: JSON.stringify(changes)
+                            userEmail: req.session.user ? req.session.user.email : 'Not Logged In',
+                            proposedCompanyName: otherCompanyName.trim(),
+                            changeDetails: JSON.stringify(metadata)
+                        }
+                    });
+                } else {
+                    // Log an "update company" suggestion.
+                    const targetCompany = await prisma.company.findUnique({ where: { id: companyId }});
+                    if (!targetCompany) return res.status(400).send("The selected company does not exist.");
+                    
+                    await prisma.changeLog.create({
+                        data: {
+                            userEmail: req.session.user ? req.session.user.email : 'Not Logged In',
+                            companyName: targetCompany.name,
+                            targetCompanyId: targetCompany.id,
+                            changeDetails: JSON.stringify(metadata)
                         }
                     });
                 }
-            }
-            
-            if (req.session.user && !req.session.user.companyId) {
-                const updatedUser = await prisma.user.update({
-                    where: { id: req.session.user.id },
-                    data: { companyId: company.id },
-                    include: { company: true }
-                });
-                req.session.user = updatedUser;
+                successMessage = "Your suggested changes have been submitted for admin review. Thank you!";
             }
         }
         
-        const fullUrl = `${req.protocol}://${req.get('host')}/intake/application?company=${company.id}`;
-
         const companies = await prisma.company.findMany({ orderBy: { name: 'asc' } });
         res.render('intake/manager', {
             title: 'Manager Intake',
             user: req.session.user,
             companies,
-            successMessage: "Company information has been saved successfully.",
-            applicationFormUrl: fullUrl
+            successMessage,
+            applicationFormUrl
         });
     } catch (error) {
         console.error('Error processing manager intake:', error);

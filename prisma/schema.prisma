@@ -38,11 +38,14 @@ model Company {
 }
 
 model ChangeLog {
-  id            Int      @id @default(autoincrement())
-  createdAt     DateTime @default(now())
-  userEmail     String
-  companyName   String
-  changeDetails String // JSON string of changes
+  id                  Int      @id @default(autoincrement())
+  createdAt           DateTime @default(now())
+  userEmail           String
+  companyName         String? // Name of the company being updated
+  targetCompanyId     String? // ID of the company being updated
+  proposedCompanyName String? // Name for a new company submission
+  changeDetails       String   // JSON string of changes
+  status              String   @default("PENDING") // PENDING, APPROVED, REJECTED
 }
 
 model Application {
