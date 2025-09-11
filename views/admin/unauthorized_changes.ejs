@@ -225,23 +225,29 @@
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {allFields.map(key => (
-                                        <tr key={key}>
-                                            {log.status === 'PENDING' && (
-                                                <td className="p-4">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={selectedFields.includes(key)}
-                                                        onChange={() => handleFieldToggle(key)}
-                                                        className="h-4 w-4"
-                                                    />
-                                                </td>
-                                            )}
-                                            <td className="p-4 font-medium text-gray-800">{key}</td>
-                                            <td className="p-4 text-gray-600 italic">{currentTarget?.[key] || 'Not set'}</td>
-                                            <td className="p-4 text-gray-800">{String(changeDetails[key])}</td>
-                                        </tr>
-                                    ))}
+                                    {allFields.map(key => {
+                                        const currentValue = currentTarget?.[key] || '';
+                                        const proposedValue = changeDetails[key] || '';
+                                        const isChanged = String(currentValue) !== String(proposedValue);
+
+                                        return (
+                                            <tr key={key} className={isChanged ? 'bg-yellow-50' : ''}>
+                                                {log.status === 'PENDING' && (
+                                                    <td className="p-4">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={selectedFields.includes(key)}
+                                                            onChange={() => handleFieldToggle(key)}
+                                                            className="h-4 w-4"
+                                                        />
+                                                    </td>
+                                                )}
+                                                <td className="p-4 font-medium text-gray-800">{key}</td>
+                                                <td className="p-4 text-gray-600 italic">{String(currentValue) || 'Not set'}</td>
+                                                <td className={`p-4 text-gray-800 ${isChanged ? 'font-semibold' : ''}`}>{String(proposedValue)}</td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
