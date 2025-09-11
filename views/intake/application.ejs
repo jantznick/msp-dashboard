@@ -1,0 +1,121 @@
+<%- include('../partials/header') %>
+
+<div class="container mx-auto mt-10 px-4 py-8">
+    <div class="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">New Application Intake</h1>
+        <p class="text-gray-600 mb-6">Provide detailed information about your application.</p>
+        
+        <% if (locals.successMessage) { %>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
+                <strong class="font-bold">Success!</strong>
+                <span class="block sm:inline"><%= successMessage %></span>
+            </div>
+        <% } %>
+
+        <form action="/intake/application" method="POST" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="companyId" class="block text-sm font-bold text-gray-700">Company / Team:</label>
+                    <select id="companyId" name="companyId" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required>
+                        <option value="">Select a company...</option>
+                        <% companies.forEach(company => { %>
+                            <option value="<%= company.id %>" <%= (locals.defaults && defaults.id === company.id) ? 'selected' : '' %>>
+                                <%= company.name %>
+                            </option>
+                        <% }); %>
+                        <option value="other">Other...</option>
+                    </select>
+                </div>
+                <div id="other-company-wrapper" class="hidden">
+                    <label for="otherCompanyName" class="block text-sm font-bold text-gray-700">New Company Name:</label>
+                    <input type="text" id="otherCompanyName" name="otherCompanyName" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+                </div>
+                <div>
+                    <label for="name" class="block text-sm font-bold text-gray-700">Application Name:</label>
+                    <input type="text" id="name" name="name" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required>
+                </div>
+            </div>
+
+            <div>
+                <label for="description" class="block text-sm font-bold text-gray-700">Description / Use Case:</label>
+                <textarea id="description" name="description" rows="3" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"><%= locals.defaults ? defaults.description : '' %></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="owner" class="block text-sm font-bold text-gray-700">Owner / Eng. Lead:</label>
+                    <input type="text" id="owner" name="owner" value="<%= locals.defaults ? defaults.engManager : '' %>" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+                </div>
+                <div>
+                    <label for="repoUrl" class="block text-sm font-bold text-gray-700">Repository URL:</label>
+                    <input type="url" id="repoUrl" name="repoUrl" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+                </div>
+            </div>
+
+            <hr>
+
+            <h2 class="text-xl font-semibold text-gray-700">Application Details</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div>
+                    <label for="language" class="block text-sm font-bold text-gray-700">Language:</label>
+                    <input type="text" id="language" name="language" value="<%= locals.defaults ? defaults.language : '' %>" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+                </div>
+                <div>
+                    <label for="framework" class="block text-sm font-bold text-gray-700">Framework:</label>
+                    <input type="text" id="framework" name="framework" value="<%= locals.defaults ? defaults.framework : '' %>" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+                </div>
+                 <div>
+                    <label for="serverEnvironment" class="block text-sm font-bold text-gray-700">Server Environment:</label>
+                    <input type="text" id="serverEnvironment" name="serverEnvironment" value="<%= locals.defaults ? defaults.serverEnvironment : '' %>" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. AWS, On-prem">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="facing" class="block text-sm font-bold text-gray-700">Facing:</label>
+                    <input type="text" id="facing" name="facing" value="<%= locals.defaults ? defaults.facing : '' %>" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Internal, External">
+                </div>
+                 <div>
+                    <label for="deploymentType" class="block text-sm font-bold text-gray-700">Deployment Type:</label>
+                    <input type="text" id="deploymentType" name="deploymentType" value="<%= locals.defaults ? defaults.deploymentType : '' %>" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Scheduled, Ad-hoc">
+                </div>
+            </div>
+
+             <div>
+                <label for="authProfiles" class="block text-sm font-bold text-gray-700">Necessary Auth Profiles:</label>
+                <input type="text" id="authProfiles" name="authProfiles" value="<%= locals.defaults ? defaults.authProfiles : '' %>" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+            </div>
+
+             <div>
+                <label for="dataTypes" class="block text-sm font-bold text-gray-700">Data Types Collected/Stored:</label>
+                <input type="text" id="dataTypes" name="dataTypes" value="<%= locals.defaults ? defaults.dataTypes : '' %>" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. PII, PCI">
+            </div>
+
+            <div class="pt-4">
+                <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Submit Application</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const companySelect = document.getElementById('companyId');
+        const otherCompanyWrapper = document.getElementById('other-company-wrapper');
+        const otherCompanyInput = document.getElementById('otherCompanyName');
+
+        companySelect.addEventListener('change', function() {
+            if (this.value === 'other') {
+                otherCompanyWrapper.classList.remove('hidden');
+                otherCompanyInput.required = true;
+            } else {
+                otherCompanyWrapper.classList.add('hidden');
+                otherCompanyInput.required = false;
+                otherCompanyInput.value = '';
+            }
+        });
+    });
+</script>
+
+<%- include('../partials/footer') %>

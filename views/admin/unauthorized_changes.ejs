@@ -1,0 +1,50 @@
+<%- include('../partials/header') %>
+
+<div class="container mx-auto mt-10 px-4">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Unauthorized Company Changes</h1>
+    <p class="text-gray-600 mb-8">This log shows all changes submitted by logged-in users who are not yet assigned to the company they are modifying. You can use this log to verify changes and assign users to the correct company.</p>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="py-2 px-4 border-b">Timestamp</th>
+                        <th class="py-2 px-4 border-b">User Email</th>
+                        <th class="py-2 px-4 border-b">Company Name</th>
+                        <th class="py-2 px-4 border-b">Changes Made</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (logs.length > 0) { %>
+                        <% logs.forEach(log => { %>
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-2 px-4 border-b text-sm text-gray-500"><%= new Date(log.createdAt).toLocaleString() %></td>
+                                <td class="py-2 px-4 border-b text-sm"><%= log.userEmail %></td>
+                                <td class="py-2 px-4 border-b text-sm font-medium"><%= log.companyName %></td>
+                                <td class="py-2 px-4 border-b text-sm">
+                                    <ul>
+                                        <% JSON.parse(log.changeDetails).forEach(change => { %>
+                                            <li>
+                                                <span class="font-semibold"><%= change.key %>:</span>
+                                                <span class="text-gray-600">"<%= change.oldValue %>"</span>
+                                                <span class="text-gray-500 mx-1">→</span>
+                                                <span class="text-green-600">"<%= change.newValue %>"</span>
+                                            </li>
+                                        <% }); %>
+                                    </ul>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="4" class="text-center py-10 text-gray-500">No unauthorized changes have been logged.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

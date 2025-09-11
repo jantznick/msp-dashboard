@@ -1,0 +1,119 @@
+<%- include('../partials/header') %>
+
+<div class="container mx-auto mt-10 px-4 py-8">
+    <div class="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Engineering Manager Intake</h1>
+        <p class="text-gray-600 mb-6">Provide some general information about your team or company. This will help us understand your technology stack and set helpful defaults for your applications.</p>
+        
+        <% if (locals.successMessage) { %>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
+                <strong class="font-bold">Success!</strong>
+                <span class="block sm:inline"><%= successMessage %></span>
+                <% if (locals.applicationFormUrl) { %>
+                    <p class="mt-2">You can now send your team the following link to submit their specific applications:</p>
+                    <a href="<%= applicationFormUrl %>" class="font-mono text-sm bg-gray-100 p-2 rounded d-block mt-1 hover:bg-gray-200"><%= applicationFormUrl %></a>
+                <% } %>
+            </div>
+        <% } %>
+
+        <form action="/intake/manager" method="POST" class="space-y-6">
+            <% if (locals.user && user.company) { %>
+                <div>
+                    <label for="companyName" class="block text-sm font-bold text-gray-700">Company / Team Name:</label>
+                    <input type="text" id="companyName" name="companyName" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 disabled:bg-gray-100" value="<%= user.company.name %>" disabled required>
+                </div>
+            <% } else { %>
+                <div>
+                    <label for="companyId" class="block text-sm font-bold text-gray-700">Company / Team:</label>
+                    <select id="companyId" name="companyId" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required>
+                        <option value="">Select an existing company...</option>
+                        <% companies.forEach(company => { %>
+                            <option value="<%= company.id %>"><%= company.name %></option>
+                        <% }); %>
+                        <option value="other">Other (New Company)...</option>
+                    </select>
+                </div>
+                <div id="other-company-wrapper" class="hidden">
+                    <label for="otherCompanyName" class="block text-sm font-bold text-gray-700">New Company Name:</label>
+                    <input type="text" id="otherCompanyName" name="otherCompanyName" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+                </div>
+            <% } %>
+            
+            <div>
+                <label for="engManager" class="block text-sm font-bold text-gray-700">Your Name / Email (Eng. Manager):</label>
+                 <input 
+                    type="text" 
+                    id="engManager" 
+                    name="engManager" 
+                    class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 disabled:bg-gray-100"
+                    value="<%= locals.user ? user.email : '' %>"
+                    <%= locals.user ? 'disabled' : '' %>
+                    >
+            </div>
+
+            <hr>
+
+            <h2 class="text-xl font-semibold text-gray-700">Default Application Settings</h2>
+            <p class="text-gray-600 text-sm">These values will be used as defaults when your team members add a new application.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div>
+                    <label for="language" class="block text-sm font-bold text-gray-700">Primary Language:</label>
+                    <input type="text" id="language" name="language" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+                </div>
+                <div>
+                    <label for="framework" class="block text-sm font-bold text-gray-700">Primary Framework:</label>
+                    <input type="text" id="framework" name="framework" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+                </div>
+                <div>
+                    <label for="serverEnvironment" class="block text-sm font-bold text-gray-700">Server Environment:</label>
+                    <input type="text" id="serverEnvironment" name="serverEnvironment" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. AWS, On-prem">
+                </div>
+                 <div>
+                    <label for="facing" class="block text-sm font-bold text-gray-700">Facing:</label>
+                    <input type="text" id="facing" name="facing" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Internal, External">
+                </div>
+                 <div>
+                    <label for="deploymentType" class="block text-sm font-bold text-gray-700">Deployment Type:</label>
+                    <input type="text" id="deploymentType" name="deploymentType" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Scheduled, Ad-hoc">
+                </div>
+            </div>
+
+             <div>
+                <label for="authProfiles" class="block text-sm font-bold text-gray-700">Common Auth Profiles:</label>
+                <input type="text" id="authProfiles" name="authProfiles" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
+            </div>
+             <div>
+                <label for="dataTypes" class="block text-sm font-bold text-gray-700">Common Data Types Collected/Stored:</label>
+                <input type="text" id="dataTypes" name="dataTypes" class="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. PII, PCI">
+            </div>
+
+            <div class="pt-4">
+                <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Submit Information</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const companySelect = document.getElementById('companyId');
+        if (companySelect) {
+            const otherCompanyWrapper = document.getElementById('other-company-wrapper');
+            const otherCompanyInput = document.getElementById('otherCompanyName');
+
+            companySelect.addEventListener('change', function() {
+                if (this.value === 'other') {
+                    otherCompanyWrapper.classList.remove('hidden');
+                    otherCompanyInput.required = true;
+                } else {
+                    otherCompanyWrapper.classList.add('hidden');
+                    otherCompanyInput.required = false;
+                    otherCompanyInput.value = '';
+                }
+            });
+        }
+    });
+</script>
+
+<%- include('../partials/footer') %>

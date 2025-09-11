@@ -15,12 +15,23 @@
 
         const [name, setName] = useState(company.name);
         const [domains, setDomains] = useState(company.domains || '');
+        const [engManager, setEngManager] = useState(company.engManager || '');
+        const [language, setLanguage] = useState(company.language || '');
+        const [framework, setFramework] = useState(company.framework || '');
+        const [serverEnvironment, setServerEnvironment] = useState(company.serverEnvironment || '');
+        const [facing, setFacing] = useState(company.facing || '');
+        const [deploymentType, setDeploymentType] = useState(company.deploymentType || '');
+        const [authProfiles, setAuthProfiles] = useState(company.authProfiles || '');
+        const [dataTypes, setDataTypes] = useState(company.dataTypes || '');
         const [isSaving, setIsSaving] = useState(false);
 
         const handleSubmit = async (e) => {
             e.preventDefault();
             setIsSaving(true);
-            await onSave(company.id, { name, domains });
+            await onSave(company.id, { 
+                name, domains, engManager, language, framework, serverEnvironment, 
+                facing, deploymentType, authProfiles, dataTypes 
+            });
             setIsSaving(false);
             onClose();
         };
@@ -29,36 +40,55 @@
             <div className="fixed z-50 inset-0 overflow-y-auto">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-                    <div className="bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full z-50">
+                    <div className="bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-2xl sm:w-full z-50">
                         <form onSubmit={handleSubmit}>
                             <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                                 <h3 className="text-lg leading-6 font-medium text-gray-900">Edit Company: {company.name}</h3>
-                                <div className="mt-4">
-                                    <label htmlFor="editName" className="block text-sm font-medium text-gray-700">Company Name</label>
-                                    <input 
-                                        type="text" 
-                                        id="editName" 
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                        required
-                                    />
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label htmlFor="editName" className="block text-sm font-medium text-gray-700">Company Name</label>
+                                        <input type="text" id="editName" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editDomains" className="block text-sm font-medium text-gray-700">Email Domains</label>
+                                        <input type="text" id="editDomains" value={domains} onChange={(e) => setDomains(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g., company.com" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editEngManager" className="block text-sm font-medium text-gray-700">Eng. Manager</label>
+                                        <input type="text" id="editEngManager" value={engManager} onChange={(e) => setEngManager(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editLanguage" className="block text-sm font-medium text-gray-700">Default Language</label>
+                                        <input type="text" id="editLanguage" value={language} onChange={(e) => setLanguage(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                     <div>
+                                        <label htmlFor="editFramework" className="block text-sm font-medium text-gray-700">Default Framework</label>
+                                        <input type="text" id="editFramework" value={framework} onChange={(e) => setFramework(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editServerEnvironment" className="block text-sm font-medium text-gray-700">Default Server Environment</label>
+                                        <input type="text" id="editServerEnvironment" value={serverEnvironment} onChange={(e) => setServerEnvironment(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editFacing" className="block text-sm font-medium text-gray-700">Default Facing</label>
+                                        <input type="text" id="editFacing" value={facing} onChange={(e) => setFacing(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="editDeploymentType" className="block text-sm font-medium text-gray-700">Default Deployment Type</label>
+                                        <input type="text" id="editDeploymentType" value={deploymentType} onChange={(e) => setDeploymentType(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
                                 </div>
                                 <div className="mt-4">
-                                    <label htmlFor="editDomains" className="block text-sm font-medium text-gray-700">Email Domains</label>
-                                    <input 
-                                        type="text" 
-                                        id="editDomains" 
-                                        value={domains}
-                                        onChange={(e) => setDomains(e.target.value)}
-                                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                        placeholder="e.g., company.com, subdomain.com"
-                                    />
-                                    <p className="mt-2 text-xs text-gray-500">Comma-separated list of domains for auto-assignment.</p>
+                                    <label htmlFor="editAuthProfiles" className="block text-sm font-medium text-gray-700">Default Auth Profiles</label>
+                                    <input type="text" id="editAuthProfiles" value={authProfiles} onChange={(e) => setAuthProfiles(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="editDataTypes" className="block text-sm font-medium text-gray-700">Default Data Types</label>
+                                    <input type="text" id="editDataTypes" value={dataTypes} onChange={(e) => setDataTypes(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                                 </div>
                             </div>
                             <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button type="submit" disabled={isSaving} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
+                                <button type="submit" disabled={isSaving} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-700 text-base font-medium text-white hover:bg-blue-800 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
                                     {isSaving ? 'Saving...' : 'Save'}
                                 </button>
                                 <button type="button" onClick={onClose} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">
@@ -75,6 +105,7 @@
     const ManageCompaniesPage = ({ initialCompanies }) => {
         const [companies, setCompanies] = useState(initialCompanies);
         const [editingCompany, setEditingCompany] = useState(null);
+        const [expandedCompanyId, setExpandedCompanyId] = useState(null);
 
         const handleSave = async (companyId, data) => {
             try {
@@ -112,7 +143,7 @@
                             <input type="text" id="domains" name="domains" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="company.com, subdomain.com" />
                              <p className="mt-2 text-xs text-gray-500">Comma-separated list for auto-assignment.</p>
                         </div>
-                        <button type="submit" className="bg-[--color-primary] hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                             Add Company
                         </button>
                     </form>
@@ -126,18 +157,38 @@
                                 <tr>
                                     <th className="py-2 px-4 border-b">Name</th>
                                     <th className="py-2 px-4 border-b">Domains</th>
+                                    <th className="py-2 px-4 border-b">Eng. Manager</th>
                                     <th className="py-2 px-4 border-b">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {companies.map(company => (
-                                    <tr key={company.id} className="hover:bg-gray-50">
-                                        <td className="py-2 px-4 border-b">{company.name}</td>
-                                        <td className="py-2 px-4 border-b text-sm text-gray-500">{company.domains}</td>
-                                        <td className="py-2 px-4 border-b text-center">
-                                            <button onClick={() => setEditingCompany(company)} className="text-blue-500 hover:underline">Edit</button>
-                                        </td>
-                                    </tr>
+                                    <React.Fragment key={company.id}>
+                                        <tr onClick={() => setExpandedCompanyId(expandedCompanyId === company.id ? null : company.id)} className="hover:bg-gray-50 cursor-pointer">
+                                            <td className="py-2 px-4 border-b">{company.name}</td>
+                                            <td className="py-2 px-4 border-b text-sm text-gray-500">{company.domains || 'N/A'}</td>
+                                            <td className="py-2 px-4 border-b text-sm text-gray-500">{company.engManager || 'N/A'}</td>
+                                            <td className="py-2 px-4 border-b text-center">
+                                                <button onClick={(e) => { e.stopPropagation(); setEditingCompany(company); }} className="text-blue-500 hover:underline">Edit</button>
+                                            </td>
+                                        </tr>
+                                        {expandedCompanyId === company.id && (
+                                            <tr>
+                                                <td colSpan="4" className="p-4 bg-gray-50 text-sm">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Default Application Settings:</h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                        <div><strong>Language:</strong> {company.language || 'N/A'}</div>
+                                                        <div><strong>Framework:</strong> {company.framework || 'N/A'}</div>
+                                                        <div><strong>Server Env:</strong> {company.serverEnvironment || 'N/A'}</div>
+                                                        <div><strong>Facing:</strong> {company.facing || 'N/A'}</div>
+                                                        <div><strong>Deployment:</strong> {company.deploymentType || 'N/A'}</div>
+                                                    </div>
+                                                    <div className="mt-4 pt-4 border-t"><strong>Auth Profiles:</strong> {company.authProfiles || 'N/A'}</div>
+                                                    <div className="mt-2"><strong>Data Types:</strong> {company.dataTypes || 'N/A'}</div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
                                 ))}
                             </tbody>
                         </table>

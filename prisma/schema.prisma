@@ -25,6 +25,24 @@ model Company {
   users        User[]
   applications Application[]
   domains      String? // Comma-separated list of domains
+
+  // Default metadata for new applications
+  engManager        String?
+  language          String?
+  framework         String?
+  serverEnvironment String?
+  facing            String?
+  deploymentType    String?
+  authProfiles      String?
+  dataTypes         String?
+}
+
+model ChangeLog {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  userEmail     String
+  companyName   String
+  changeDetails String // JSON string of changes
 }
 
 model Application {
