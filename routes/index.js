@@ -6,6 +6,7 @@ const { marked } = require('marked');
 const nodemailer = require('nodemailer');
 const { prisma } = require('../prisma/client');
 const { isAuthenticated } = require('../middleware/auth');
+const { calculateApplicationScore } = require('../services/scoring');
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
@@ -141,20 +142,34 @@ router.get('/my-requests', isAuthenticated, async (req, res) => {
 });
 
 router.get('/my-applications', isAuthenticated, async (req, res) => {
+    if (!req.session.user.companyId) {
+        return res.render('my-applications', {
+            title: 'My Applications',
+            applications: [],
+            company: null
+        });
+    }
     try {
-        if (res.locals.isAdmin) {
-            return res.redirect('/admin/applications');
-        }
-        if (!req.session.user.companyId) {
-            return res.render('my-applications', { title: 'My Applications', applications: [], company: null });
-        }
-        const company = await prisma.company.findUnique({ where: { id: req.session.user.companyId } });
+        const company = await prisma.company.findUnique({
+            where: { id: req.session.user.companyId }
+        });
         const applications = await prisma.application.findMany({
             where: { companyId: req.session.user.companyId },
             orderBy: { name: 'asc' }
         });
-        res.render('my-applications', { title: 'My Applications', applications, company });
+
+        const applicationsWithScores = applications.map(app => ({
+            ...app,
+            score: calculateApplicationScore(app)
+        }));
+
+        res.render('my-applications', {
+            title: 'My Applications',
+            applications: applicationsWithScores,
+            company: company
+        });
     } catch (error) {
+        console.error("Error fetching user's applications:", error);
         res.status(500).send("Error fetching applications");
     }
 });

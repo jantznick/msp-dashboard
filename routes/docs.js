@@ -86,7 +86,7 @@ router.get('/*', async (req, res) => {
         });
 
         const navStructure = [
-            { group: 'Overview', pages: ['program-overview', 'new-app-sec-customer-roadmap', 'app-sec-defined-terms'] },
+            { group: 'Overview', pages: ['program-overview', 'new-app-sec-customer-roadmap', 'scoring-methodology', 'app-sec-defined-terms'] },
             { group: 'Services', pages: ['penetration-testing', 'threat-modeling-for-developers', 'domain-monitoring', 'samm-assessments', 'app-sec-capabilities'] },
             { group: 'Onboarding', pages: ['posture-analysis-questionnaire', 'application-onboarding-questionnaire'] },
             { group: 'Developer Resources', pages: ['developer-checklist'] },
