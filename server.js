@@ -69,6 +69,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const intakeRoutes = require('./routes/intake');
 const apiRoutes = require('./routes/api');
+const docsRoutes = require('./routes/docs');
 
 
 // Mount Routers
@@ -77,6 +78,7 @@ app.use('/', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/intake', intakeRoutes);
 app.use('/api', apiRoutes);
+app.use('/docs', docsRoutes);
 
 
 app.listen(port, '0.0.0.0', () => {

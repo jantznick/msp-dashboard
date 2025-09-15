@@ -1,15 +1,11 @@
-<%- include('partials/header') %>
-
-<div class="bg-white rounded-xl shadow-lg p-8 md:p-12">
-    <div class="prose max-w-none">
-        <%- content %>
-    </div>
-</div>
+<article class="prose max-w-none">
+    <%- product.content %>
+</article>
 
 <div class="mt-12">
     <div class="text-center mb-8">
-        <h2 class="text-3xl font-bold text-[secondary]">Request More Information</h2>
-        <p class="mt-2 text-md text-gray-500">Submit the form below to get in touch about <%= productName %>.</p>
+        <h2 class="text-3xl font-bold text-gray-800">Request More Information</h2>
+        <p class="mt-2 text-md text-gray-600">Submit the form below to get in touch about <%= productName %>.</p>
     </div>
 
     <% if (submitted) { %>
@@ -17,40 +13,40 @@
             <strong class="font-bold">Success!</strong>
             <span class="block sm:inline">Your request has been submitted. We will be in touch shortly.</span>
         </div>
+    <% } else { %>
+        <form action="/request" method="POST" class="max-w-xl mx-auto bg-white p-8 border border-gray-200 rounded-lg shadow-sm">
+            <input type="hidden" name="products" value="<%= productName %>">
+            <input type="hidden" name="productSlug" value="<%= product.slug %>">
+            
+            <% if (!locals.user) { %>
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Email Address:</label>
+                    <input type="email" id="email" name="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                </div>
+            <% } %>
+            
+            <% if (locals.user && applications.length > 0) { %>
+                <div class="mb-4">
+                    <label for="applicationId" class="block text-gray-700 text-sm font-bold mb-2">Associate with Application:</label>
+                    <select id="applicationId" name="applicationId" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="">None</option>
+                        <% applications.forEach(function(app) { %>
+                            <option value="<%= app.id %>"><%= app.name %></option>
+                        <% }); %>
+                    </select>
+                </div>
+            <% } %>
+
+            <div class="mb-6">
+                <label for="notes" class="block text-gray-700 text-sm font-bold mb-2">Notes:</label>
+                <textarea id="notes" name="notes" rows="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+            </div>
+
+            <div class="flex items-center justify-center">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Submit Request
+                </button>
+            </div>
+        </form>
     <% } %>
-
-    <form action="/request" method="POST" class="max-w-xl mx-auto space-y-6 bg-white p-8 border border-gray-100 rounded-xl shadow-lg">
-        <input type="hidden" name="product" value="<%= productName %>">
-        <input type="hidden" name="requestType" value="More Information">
-        
-        <% if (user && applications.length > 0) { %>
-            <div>
-                <label for="applicationId" class="block text-lg font-medium text-gray-700">Application</label>
-                <select id="applicationId" name="applicationId" class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
-                    <option value="">Select an application (optional)</option>
-                    <% applications.forEach(app => { %>
-                        <option value="<%= app.id %>"><%= app.name %></option>
-                    <% }) %>
-                </select>
-            </div>
-        <% } %>
-
-        <% if (!user) { %>
-            <div>
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Your Email</label>
-                <input type="email" id="email" name="email" value="" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
-            </div>
-        <% } %>
-
-        <div>
-            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea id="notes" name="notes" rows="4" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Any specific questions or details..."></textarea>
-        </div>
-        <div class="mb-6">
-            <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Submit Request</button>
-        </div>
-    </form>
 </div>
-
-
-<%- include('partials/footer') %>

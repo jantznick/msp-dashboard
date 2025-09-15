@@ -1,0 +1,64 @@
+<%- include('../partials/header') %>
+
+<div class="bg-gray-50">
+    <div class="max-w-8xl mx-auto flex">
+        <!-- Sidebar -->
+        <aside class="w-60 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-y-auto">
+            <div class="p-6">
+                <nav class="space-y-6">
+                    <% navLinks.forEach(group => { %>
+                        <div>
+                            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= group.group %></h3>
+                            <ul class="mt-2 space-y-1">
+                                <% group.pages.forEach(link => { %>
+                                    <% const linkHref = group.isProduct ? `/docs/${link.slug}` : `/docs/${link.slug}`; %>
+                                    <% const isActive = currentSlug === link.slug; %>
+                                    <li>
+                                        <a href="<%= linkHref %>"
+                                            class="block px-3 py-2 rounded-md text-sm font-medium <%= isActive ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600 hover:bg-gray-100' %>">
+                                            <%= link.title %>
+                                        </a>
+                                    </li>
+                                <% }); %>
+                            </ul>
+                        </div>
+                    <% }); %>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 py-12 px-4 sm:px-6 lg:px-16">
+            <div class="max-w-5xl mx-auto">
+                <!-- Page Header -->
+                <div class="pb-8 border-b border-gray-200 mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900"><%= title %></h1>
+                </div>
+
+                <article class="prose max-w-none">
+                    <%- content %>
+                </article>
+
+                <!-- Prev/Next Navigation -->
+                <div class="mt-12 pt-8 border-t border-gray-200 flex justify-between">
+                    <% if (prevPage) { %>
+                        <a href="/docs/<%= prevPage %>" class="text-gray-600 hover:text-gray-900 hover:underline">
+                            <span class="block text-sm text-gray-500">&larr; Previous</span>
+                            <span class="block font-medium"><%= navLinks.flatMap(g => g.pages).find(p => p.slug === prevPage)?.title %></span>
+                        </a>
+                    <% } else { %>
+                        <span></span> <!-- Placeholder for alignment -->
+                    <% } %>
+                    <% if (nextPage) { %>
+                        <a href="/docs/<%= nextPage %>" class="text-gray-600 hover:text-gray-900 hover:underline text-right">
+                            <span class="block text-sm text-gray-500">Next &rarr;</span>
+                            <span class="block font-medium"><%= navLinks.flatMap(g => g.pages).find(p => p.slug === nextPage)?.title %></span>
+                        </a>
+                    <% } %>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

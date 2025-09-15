@@ -17,27 +17,6 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Home page with products
-router.get('/', async (req, res) => {
-    try {
-        const productsDir = path.join(__dirname, '..', 'content', 'products');
-        const files = fs.readdirSync(productsDir);
-        const products = files.map(file => {
-            const content = fs.readFileSync(path.join(productsDir, file), 'utf-8');
-            const { attributes } = parseFrontMatter(content);
-            return {
-                slug: file.replace('.md', ''),
-                title: attributes.title || 'Untitled',
-                summary: attributes.summary || ''
-            };
-        });
-        res.render('home', { title: 'Home', products });
-    } catch (error) {
-        console.error('Error fetching products for homepage:', error);
-        res.status(500).send('Error loading products');
-    }
-});
-
 function parseFrontMatter(content) {
     const match = /---\n([\s\S]+?)\n---/.exec(content);
     const attributes = {};
@@ -54,28 +33,23 @@ function parseFrontMatter(content) {
     return { attributes: {}, body: content };
 }
 
-// Product detail page
-router.get('/products/:slug', async (req, res) => {
+// Home page
+router.get('/', async (req, res) => {
     try {
-        const filePath = path.join(__dirname, '..', 'content', 'products', `${req.params.slug}.md`);
-        const markdown = fs.readFileSync(filePath, 'utf-8');
-        const { attributes, body } = parseFrontMatter(markdown);
-        const htmlContent = marked(body);
-
-        let applications = [];
-        if (req.session.user && req.session.user.companyId) {
-            applications = await prisma.application.findMany({
-                where: { companyId: req.session.user.companyId }
-            });
-        }
-        
-        res.render('product-detail', { 
-            title: attributes.title || 'Product Detail', 
-            product: { ...attributes, content: htmlContent, slug: req.params.slug },
-            applications
+        const productsDir = path.join(__dirname, '..', 'content', 'products');
+        const files = fs.readdirSync(productsDir);
+        const products = files.map(file => {
+            const content = fs.readFileSync(path.join(productsDir, file), 'utf-8');
+            const { attributes } = parseFrontMatter(content);
+            return {
+                slug: file.replace('.md', ''),
+                ...attributes
+            };
         });
+        res.render('home', { title: 'Home', products });
     } catch (error) {
-        res.status(404).send('Product not found');
+        console.error('Error fetching products for homepage:', error);
+        res.render('home', { title: 'Home', products: [] });
     }
 });
 
@@ -87,7 +61,11 @@ router.get('/request', async (req, res) => {
             where: { companyId: req.session.user.companyId }
         });
     }
-    res.render('request', { title: 'Request a Tool', applications });
+    res.render('request', { 
+        title: 'Request a Tool', 
+        applications, 
+        submitted: req.query.submitted === 'true' 
+    });
 });
 
 router.get('/add-users', async (req, res) => {
@@ -97,12 +75,16 @@ router.get('/add-users', async (req, res) => {
             where: { companyId: req.session.user.companyId }
         });
     }
-    res.render('add-users', { title: 'Add Users', applications });
+    res.render('add-users', { 
+        title: 'Add Users', 
+        applications,
+        submitted: req.query.submitted === 'true'
+    });
 });
 
 // Handle form submissions
 router.post('/request', async (req, res) => {
-    const { products, requestType, users, notes, email, applicationId } = req.body;
+    const { products, requestType, users, notes, email, applicationId, productSlug } = req.body;
     try {
         const finalEmail = req.session.user ? req.session.user.email : email;
         const requestData = {
@@ -131,11 +113,13 @@ router.post('/request', async (req, res) => {
         };
         transporter.sendMail(mailOptions);
 
-        res.render(requestType === 'Add Users' ? 'add-users' : 'request', { 
-            title: 'Request Submitted', 
-            applications: [],
-            message: 'Your request has been submitted successfully!' 
-        });
+        if (productSlug) {
+            return res.redirect(`/docs/products/${productSlug}?submitted=true`);
+        }
+        
+        const redirectUrl = requestType === 'Add Users' ? '/add-users' : '/request';
+        res.redirect(`${redirectUrl}?submitted=true`);
+
     } catch (error) {
         console.error('Error submitting request:', error);
         res.status(500).send('Error submitting request');
