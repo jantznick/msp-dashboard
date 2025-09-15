@@ -5,7 +5,7 @@ const { prisma } = require('../prisma/client');
 
 // Login
 router.get('/login', (req, res) => {
-    res.render('login', { title: 'Login' });
+    res.render('login', { title: 'Login', error: null });
 });
 
 router.post('/login', async (req, res) => {
@@ -28,7 +28,7 @@ router.post('/login', async (req, res) => {
 
 // Register
 router.get('/register', (req, res) => {
-    res.render('register', { title: 'Register' });
+    res.render('register', { title: 'Register', error: null });
 });
 
 router.post('/register', async (req, res) => {
