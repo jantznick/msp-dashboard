@@ -72,6 +72,20 @@ model Application {
   authProfiles    String?
   dataTypes       String?
   contacts        Contact[]
+
+  // Scoring fields
+  sastTool              String?
+  sastIntegrationLevel  Int?
+  dastTool              String?
+  dastIntegrationLevel  Int?
+  appFirewallTool       String?
+  appFirewallIntegrationLevel Int?
+  apiSecurityTool       String?
+  apiSecurityIntegrationLevel Int?
+  
+  apiSecurityNA         Boolean? @default(false)
+
+  metadataLastReviewed  DateTime?
 }
 
 model Contact {

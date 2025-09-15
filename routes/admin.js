@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { prisma } = require('../prisma/client');
 const { isAuthenticated, isAdmin } = require('../middleware/auth');
+const fs = require('fs');
+const path = require('path');
+const { calculateApplicationScore } = require('../services/scoring');
 
 // Protect all admin routes
 router.use(isAuthenticated, isAdmin);
@@ -51,11 +54,41 @@ router.get('/companies', isAuthenticated, isAdmin, async (req, res) => {
                 }
             }
         });
+
+        const companiesWithScores = companies.map(company => {
+            if (company.applications.length === 0) {
+                return { ...company, score: { totalScore: 0, knowledgeScore: 0, toolScore: 0 } };
+            }
+
+            let totalKnowledgeScore = 0;
+            let totalToolScore = 0;
+
+            company.applications.forEach(app => {
+                const appScore = calculateApplicationScore(app);
+                totalKnowledgeScore += appScore.knowledgeScore;
+                totalToolScore += appScore.toolScore;
+            });
+            
+            const avgKnowledgeScore = totalKnowledgeScore / company.applications.length;
+            const avgToolScore = totalToolScore / company.applications.length;
+            const totalScore = avgKnowledgeScore + avgToolScore;
+
+            return { 
+                ...company, 
+                score: { 
+                    totalScore: Math.round(totalScore),
+                    knowledgeScore: Math.round(avgKnowledgeScore),
+                    toolScore: Math.round(avgToolScore)
+                }
+            };
+        });
+
         res.render('admin/companies', {
             title: 'Manage Companies',
-            companies: companies
+            companies: companiesWithScores
         });
     } catch (error) {
+        console.error("Error fetching companies:", error);
         res.status(500).send("Error fetching companies");
     }
 });
@@ -125,8 +158,26 @@ router.get('/applications', isAuthenticated, isAdmin, async (req, res) => {
                 contacts: true
             }
         });
+
+        const applicationsWithScores = applications.map(app => ({
+            ...app,
+            score: calculateApplicationScore(app)
+        }));
+        
         const companies = await prisma.company.findMany({ orderBy: { name: 'asc' } });
-        res.render('admin/applications', { title: 'Manage Applications', applications, companies });
+        
+        const toolsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'tools.json'), 'utf-8'));
+        const integrationLevels = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'scoring', 'integrationLevels.json'), 'utf-8'));
+        const riskFactors = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'scoring', 'riskFactors.json'), 'utf-8'));
+
+        res.render('admin/applications', { 
+            title: 'Manage Applications', 
+            applications: applicationsWithScores, 
+            companies,
+            toolsConfig,
+            integrationLevels,
+            riskFactors
+        });
     } catch (error) {
         res.status(500).send("Error fetching applications");
     }
@@ -147,29 +198,38 @@ router.post('/applications/add', isAuthenticated, isAdmin, async (req, res) => {
     }
 });
 
-router.post('/applications/:id/update', async (req, res) => {
+router.post('/applications/:id/update', isAuthenticated, isAdmin, async (req, res) => {
     try {
-        const updatedApplication = await prisma.application.update({
-            where: { id: req.params.id },
-            data: {
-                name: req.body.name,
-                companyId: req.body.companyId,
-                description: req.body.description,
-                owner: req.body.owner,
-                repoUrl: req.body.repoUrl,
-                language: req.body.language,
-                framework: req.body.framework,
-                serverEnvironment: req.body.serverEnvironment,
-                facing: req.body.facing,
-                deploymentType: req.body.deploymentType,
-                authProfiles: req.body.authProfiles,
-                dataTypes: req.body.dataTypes
+        const { id } = req.params;
+        const data = req.body;
+        
+        // Convert integer fields
+        const intFields = ['sastIntegrationLevel', 'dastIntegrationLevel', 'appFirewallIntegrationLevel', 'apiSecurityIntegrationLevel'];
+        intFields.forEach(field => {
+            if (data[field]) {
+                data[field] = parseInt(data[field], 10);
             }
         });
-        res.redirect('/admin/applications');
+        
+        // Convert boolean fields
+        const boolFields = ['apiSecurityNA'];
+        boolFields.forEach(field => {
+            data[field] = data[field] === 'on' || data[field] === true;
+        });
+
+        // Convert dataTypes array to string
+        if (Array.isArray(data.dataTypes)) {
+            data.dataTypes = data.dataTypes.join(', ');
+        }
+
+        const updatedApplication = await prisma.application.update({
+            where: { id: id },
+            data: data
+        });
+        res.json(updatedApplication);
     } catch (error) {
-        console.error(`Error updating application ${req.params.id}:`, error);
-        res.status(500).send("Error updating application");
+        console.error('Failed to update application:', error);
+        res.status(500).json({ error: 'Failed to update application' });
     }
 });
 

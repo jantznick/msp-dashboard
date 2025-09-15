@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { prisma } = require('../prisma/client');
 const { isAuthenticated, isAdmin } = require('../middleware/auth');
+const { calculateApplicationScore } = require('../services/scoring');
 
 // Protect all API routes
 router.use(isAuthenticated);
@@ -170,29 +171,41 @@ router.post('/run-script', isAdmin, async (req, res) => {
 });
 
 // Update application via API
-router.post('/applications/:id/update', async (req, res) => {
-    const appId = req.params.id;
-    const { name, description, owner, repoUrl, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes } = req.body;
+router.post('/applications/:id/update', isAuthenticated, isAdmin, async (req, res) => {
     try {
-        const user = await prisma.user.findUnique({ where: { id: req.session.user.id } });
-        const application = await prisma.application.findUnique({ where: { id: appId } });
-        
-        const isAdmin = res.locals.isAdmin;
-        const isOwner = user && application && user.companyId === application.companyId;
+        const { id } = req.params;
+        const data = req.body;
 
-        if (!isAdmin && !isOwner) {
-            return res.status(403).json({ error: "You do not have permission to edit this application." });
+        // Convert integer fields
+        const intFields = ['sastIntegrationLevel', 'dastIntegrationLevel', 'appFirewallIntegrationLevel', 'apiSecurityIntegrationLevel'];
+        intFields.forEach(field => {
+            if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
+                data[field] = parseInt(data[field], 10);
+            }
+        });
+
+        // Convert boolean fields
+        const boolFields = ['apiSecurityNA'];
+        boolFields.forEach(field => {
+            data[field] = data[field] === 'on' || data[field] === true;
+        });
+
+        // Convert dataTypes array to string
+        if (Array.isArray(data.dataTypes)) {
+            data.dataTypes = data.dataTypes.join(', ');
         }
 
         const updatedApplication = await prisma.application.update({
-            where: { id: appId },
-            data: { name, description, owner, repoUrl, language, framework, serverEnvironment, facing, deploymentType, authProfiles, dataTypes },
-            include: { company: true }
+            where: { id: id },
+            data: data,
+            include: {
+                company: true
+            }
         });
         res.json(updatedApplication);
     } catch (error) {
-        console.error(`Error updating application ${appId} by user ${req.session.user.id}:`, error);
-        res.status(500).json({ error: "Error updating application" });
+        console.error('Failed to update application:', error);
+        res.status(500).json({ error: 'Failed to update application' });
     }
 });
 
@@ -205,8 +218,15 @@ router.get('/applications', isAdmin, async (req, res) => {
                 contacts: true
             }
         });
-        res.json(applications);
+
+        const applicationsWithScores = applications.map(app => ({
+            ...app,
+            score: calculateApplicationScore(app)
+        }));
+
+        res.json(applicationsWithScores);
     } catch (error) {
+        console.error('Failed to fetch applications:', error);
         res.status(500).json({ error: 'Failed to fetch applications.' });
     }
 });

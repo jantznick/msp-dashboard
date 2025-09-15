@@ -1,0 +1,12 @@
+{
+    "managed": [
+        "Snyk",
+        "Tenable WAS",
+        "Fastly NGWAF",
+        "Traceable API Security"
+    ],
+    "approvedUnmanaged": [
+        "Dependabot",
+        "GitHub Advanced Security"
+    ]
+}

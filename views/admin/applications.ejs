@@ -8,112 +8,186 @@
 <div id="manage-apps-root" class="container mx-auto mt-10 px-4"></div>
 
 <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect, useCallback } = React;
+
+    // --- CONFIGURATION (Load once at the top) ---
+    const toolsConfig = <%- JSON.stringify(toolsConfig) %>;
+    const integrationLevels = <%- JSON.stringify(integrationLevels) %>;
+    const riskFactors = <%- JSON.stringify(riskFactors) %>;
 
     const EditApplicationModal = ({ app, companies, onClose, onSave }) => {
-        if (!app) return null;
-
-        const [name, setName] = useState(app.name);
-        const [companyId, setCompanyId] = useState(app.companyId);
-        const [description, setDescription] = useState(app.description || '');
-        const [owner, setOwner] = useState(app.owner || '');
-        const [repoUrl, setRepoUrl] = useState(app.repoUrl || '');
-        const [language, setLanguage] = useState(app.language || '');
-        const [framework, setFramework] = useState(app.framework || '');
-        const [serverEnvironment, setServerEnvironment] = useState(app.serverEnvironment || '');
-        const [facing, setFacing] = useState(app.facing || '');
-        const [deploymentType, setDeploymentType] = useState(app.deploymentType || '');
-        const [authProfiles, setAuthProfiles] = useState(app.authProfiles || '');
-        const [dataTypes, setDataTypes] = useState(app.dataTypes || '');
+        const [activeTab, setActiveTab] = useState('details');
         const [isSaving, setIsSaving] = useState(false);
+        const [formData, setFormData] = useState({
+            name: app?.name || '',
+            companyId: app?.companyId || (companies[0]?.id || ''),
+            description: app?.description || '',
+            owner: app?.owner || '',
+            repoUrl: app?.repoUrl || '',
+            language: app?.language || '',
+            framework: app?.framework || '',
+            serverEnvironment: app?.serverEnvironment || '',
+            facing: app?.facing || 'Internal',
+            deploymentType: app?.deploymentType || '',
+            authProfiles: app?.authProfiles || '',
+            dataTypes: app?.dataTypes ? app.dataTypes.split(',').map(s => s.trim()) : [],
+            sastTool: app?.sastTool || '',
+            sastIntegrationLevel: app?.sastIntegrationLevel || 0,
+            dastTool: app?.dastTool || '',
+            dastIntegrationLevel: app?.dastIntegrationLevel || 0,
+            appFirewallTool: app?.appFirewallTool || '',
+            appFirewallIntegrationLevel: app?.appFirewallIntegrationLevel || 0,
+            apiSecurityTool: app?.apiSecurityTool || '',
+            apiSecurityIntegrationLevel: app?.apiSecurityIntegrationLevel || 0,
+            apiSecurityNA: app?.apiSecurityNA || false,
+            metadataLastReviewed: app?.metadataLastReviewed || null
+        });
+
+        const handleChange = (e) => {
+            const { name, value, type, checked } = e.target;
+            if (name === 'dataTypes') {
+                const newTypes = checked
+                    ? [...formData.dataTypes, value]
+                    : formData.dataTypes.filter(t => t !== value);
+                setFormData({ ...formData, dataTypes: newTypes });
+            } else {
+                setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
+            }
+        };
 
         const handleSubmit = async (e) => {
             e.preventDefault();
             setIsSaving(true);
-            await onSave(app.id, { 
-                name, companyId, description, owner, repoUrl, language, framework, 
-                serverEnvironment, facing, deploymentType, authProfiles, dataTypes 
-            });
+            await onSave(formData, app?.id); // Pass formData and optional ID
             setIsSaving(false);
             onClose();
         };
 
+        const handleMarkAsReviewed = () => {
+            setFormData(prev => ({ ...prev, metadataLastReviewed: new Date().toISOString() }));
+        };
+
         return (
             <div className="fixed z-50 inset-0 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen">
+                <div className="flex items-center justify-center min-h-screen p-4">
                     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-                    <div className="bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full z-50">
-                        <form onSubmit={handleSubmit}>
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <h3 className="text-lg leading-6 font-medium text-gray-900">Edit Application: {app.name}</h3>
-                                <div className="mt-4">
-                                    <label htmlFor="editName" className="block text-sm font-medium text-gray-700">Application Name</label>
-                                    <input type="text" id="editName" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required />
-                                </div>
-                                <div className="mt-4">
-                                    <label htmlFor="editCompanyId" className="block text-sm font-medium text-gray-700">Company</label>
-                                    <select id="editCompanyId" value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                                        {companies.map(company => (
-                                            <option key={company.id} value={company.id}>{company.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="mt-4">
-                                    <label htmlFor="editDescription" className="block text-sm font-medium text-gray-700">Description</label>
-                                    <textarea id="editDescription" value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
-                                </div>
-                                <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                                    <div>
-                                        <label htmlFor="editOwner" className="block text-sm font-medium text-gray-700">Owner</label>
-                                        <input type="text" id="editOwner" value={owner} onChange={(e) => setOwner(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="editRepoUrl" className="block text-sm font-medium text-gray-700">Repository URL</label>
-                                        <input type="url" id="editRepoUrl" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
-                                    </div>
-                                </div>
-                                <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3">
-                                    <div>
-                                        <label htmlFor="editLanguage" className="block text-sm font-medium text-gray-700">Language</label>
-                                        <input type="text" id="editLanguage" value={language} onChange={(e) => setLanguage(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="editFramework" className="block text-sm font-medium text-gray-700">Framework</label>
-                                        <input type="text" id="editFramework" value={framework} onChange={(e) => setFramework(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="editServerEnvironment" className="block text-sm font-medium text-gray-700">Server Environment</label>
-                                        <input type="text" id="editServerEnvironment" value={serverEnvironment} onChange={(e) => setServerEnvironment(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. AWS, On-prem" />
-                                    </div>
-                                </div>
-                                <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                                    <div>
-                                        <label htmlFor="editFacing" className="block text-sm font-medium text-gray-700">Facing</label>
-                                        <input type="text" id="editFacing" value={facing} onChange={(e) => setFacing(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. Internal, External" />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="editDeploymentType" className="block text-sm font-medium text-gray-700">Deployment Type</label>
-                                        <input type="text" id="editDeploymentType" value={deploymentType} onChange={(e) => setDeploymentType(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. Scheduled, Ad-hoc" />
-                                    </div>
-                                </div>
-                                <div className="mt-4">
-                                    <label htmlFor="editAuthProfiles" className="block text-sm font-medium text-gray-700">Necessary Auth Profiles</label>
-                                    <input type="text" id="editAuthProfiles" value={authProfiles} onChange={(e) => setAuthProfiles(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
-                                </div>
-                                <div className="mt-4">
-                                    <label htmlFor="editDataTypes" className="block text-sm font-medium text-gray-700">Data Types Collected/Stored</label>
-                                    <input type="text" id="editDataTypes" value={dataTypes} onChange={(e) => setDataTypes(e.target.value)} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. PII, PCI" />
+                    <div className="bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-2xl sm:w-full z-50">
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div className="flex justify-between items-start">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900">{app?.id ? 'Edit' : 'Add'} Application: {app?.id ? app.name : ''}</h3>
+                                <div>
+                                    <button type="button" onClick={handleMarkAsReviewed} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 text-sm">
+                                        Mark as Reviewed
+                                    </button>
+                                    <p className="text-xs text-gray-500 mt-1 text-right">
+                                        Last Reviewed: {formData.metadataLastReviewed ? new Date(formData.metadataLastReviewed).toLocaleDateString() : 'Never'}
+                                    </p>
                                 </div>
                             </div>
-                            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button type="submit" disabled={isSaving} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-700 text-base font-medium text-white hover:bg-blue-800 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
-                                    {isSaving ? 'Saving...' : 'Save'}
-                                </button>
-                                <button type="button" onClick={onClose} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">
-                                    Cancel
-                                </button>
+                            <div className="mt-4 border-b border-gray-200">
+                                <nav className="-mb-px flex space-x-8">
+                                    <button type="button" onClick={() => setActiveTab('details')} className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'details' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Details</button>
+                                    <button type="button" onClick={() => setActiveTab('scoring')} className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'scoring' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Scoring</button>
+                                </nav>
                             </div>
-                        </form>
+                            <form onSubmit={handleSubmit} className="mt-6 max-h-[70vh] overflow-y-auto pr-2">
+                                {activeTab === 'details' && (
+                                    <div className="space-y-4">
+                                        {/* All the detail fields go here */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label htmlFor="name" className="block text-sm font-medium text-gray-700">Application Name</label>
+                                                <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="companyId" className="block text-sm font-medium text-gray-700">Company</label>
+                                                <select name="companyId" value={formData.companyId} onChange={handleChange} className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required >
+                                                    {companies.map(company => (
+                                                        <option key={company.id} value={company.id}>{company.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+                                            <textarea name="description" rows="3" value={formData.description} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label htmlFor="owner" className="block text-sm font-medium text-gray-700">Owner</label>
+                                                <input type="text" name="owner" value={formData.owner} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700">Repository URL</label>
+                                                <input type="text" name="repoUrl" value={formData.repoUrl} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label htmlFor="language" className="block text-sm font-medium text-gray-700">Language</label>
+                                                <input type="text" name="language" value={formData.language} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="framework" className="block text-sm font-medium text-gray-700">Framework</label>
+                                                <input type="text" name="framework" value={formData.framework} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label htmlFor="serverEnvironment" className="block text-sm font-medium text-gray-700">Server Environment</label>
+                                                <input type="text" name="serverEnvironment" value={formData.serverEnvironment} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="deploymentType" className="block text-sm font-medium text-gray-700">Deployment Type</label>
+                                                <input type="text" name="deploymentType" value={formData.deploymentType} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="authProfiles" className="block text-sm font-medium text-gray-700">Authentication Profiles</label>
+                                            <input type="text" name="authProfiles" value={formData.authProfiles} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Facing</label>
+                                            <div className="mt-2 flex space-x-4">
+                                                {Object.keys(riskFactors.facing).map(type => (
+                                                    <label key={type} className="inline-flex items-center">
+                                                        <input type="radio" name="facing" value={type} checked={formData.facing === type} onChange={handleChange} className="h-4 w-4" />
+                                                        <span className="ml-2">{type}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Data Types Collected/Stored</label>
+                                            <div className="mt-2 grid grid-cols-2 gap-2">
+                                                {Object.keys(riskFactors.dataTypes).map(type => (
+                                                    <label key={type} className="inline-flex items-center">
+                                                        <input type="checkbox" name="dataTypes" value={type} checked={formData.dataTypes.includes(type)} onChange={handleChange} className="h-4 w-4 rounded" />
+                                                        <span className="ml-2">{type}</span>
+                                                    </label>
+                                                ))}
+                                             </div>
+                                         </div>
+                                    </div>
+                                )}
+                                {activeTab === 'scoring' && (
+                                    <div className="space-y-6">
+                                        <ScoringInput category="sast" label="SAST" appData={formData} onChange={handleChange} />
+                                        <ScoringInput category="dast" label="DAST" appData={formData} onChange={handleChange} />
+                                        <ScoringInput category="appFirewall" label="App Firewall" appData={formData} onChange={handleChange} />
+                                        <ScoringInput category="apiSecurity" label="API Security" appData={formData} onChange={handleChange} isToggleable={true} />
+                                    </div>
+                                )}
+                                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse mt-4">
+                                    <button type="submit" disabled={isSaving} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                                        {isSaving ? 'Saving...' : 'Save'}
+                                    </button>
+                                    <button type="button" onClick={onClose} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -122,243 +196,247 @@
 
     const ManageApplicationsPage = ({ initialApps, initialCompanies }) => {
         const [applications, setApplications] = useState(initialApps);
-        const [companies] = useState(initialCompanies);
-        const [editingApp, setEditingApp] = useState(null);
+        const [companies, setCompanies] = useState(initialCompanies);
         const [filterCompany, setFilterCompany] = useState('');
+        const [editingApp, setEditingApp] = useState(null);
         const [expandedAppId, setExpandedAppId] = useState(null);
         const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+        const [appToDelete, setAppToDelete] = useState(null);
         
-        const getCompanyName = (companyId) => {
+        const getCompanyName = useCallback((companyId) => {
             const company = companies.find(c => c.id === companyId);
             return company ? company.name : 'N/A';
-        };
+        }, [companies]);
 
-        const handleSave = async (appId, data) => {
+        const refreshData = useCallback(async () => {
             try {
-                const response = await fetch(`/admin/applications/${appId}/update`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                if (response.ok) {
-                    setApplications(applications.map(a => a.id === appId ? { ...a, ...data, company: { name: getCompanyName(data.companyId) } } : a));
-                } else {
-                    alert('Failed to save application.');
-                }
+                const response = await fetch('/api/applications');
+                if (!response.ok) throw new Error('Failed to fetch');
+                const data = await response.json();
+                setApplications(data);
             } catch (error) {
-                alert('An error occurred while saving.');
+                console.error("Failed to refresh applications:", error);
+                alert("Could not refresh application data.");
+            }
+        }, []);
+
+        const handleSave = async (formData, appId) => {
+            const isAdding = !appId;
+            const url = isAdding ? '/admin/applications/add' : `/api/applications/${appId}/update`;
+            const method = 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Failed to ${isAdding ? 'add' : 'save'} application.`);
+                }
+                await refreshData();
+            } catch (error) {
+                console.error('Save/Add failed:', error);
+                alert(`An error occurred: ${error.message}`);
             }
         };
 
-        const refreshApplications = async () => {
-            const response = await fetch('/api/applications');
-            const data = await response.json();
-            setApplications(data);
+        const handleDelete = async (appId) => {
+            try {
+                const response = await fetch(`/admin/applications/delete/${appId}`, { method: 'POST' });
+                if (!response.ok) throw new Error('Failed to delete');
+                await refreshData();
+            } catch (error) {
+                console.error('Delete failed:', error);
+                alert('An error occurred while deleting the application.');
+            } finally {
+                setAppToDelete(null);
+            }
         };
-
-        const handleSaveSuccess = () => {
-            setEditingApp(null);
-            refreshApplications();
+        
+        const toggleRow = (appId) => {
+            setExpandedAppId(prevId => (prevId === appId ? null : appId));
         };
 
         const filteredApps = filterCompany 
-            ? applications.filter(app => app.companyId === filterCompany)
+            ? applications.filter(app => app.companyId === filterCompany) 
             : applications;
 
         return (
             <div>
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-800">Manage Applications</h1>
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-2xl font-bold">Manage Applications</h1>
                     <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
                         Add New Application
                     </button>
                 </div>
-
+                
                 {isAddModalOpen && (
-                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full overflow-y-auto max-h-full">
-                            <h2 className="text-2xl font-bold mb-4">Add New Application</h2>
-                            <form action="/admin/applications/add" method="POST" className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Application Name</label>
-                                        <input type="text" name="name" id="name" required className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-                                    </div>
-                                    <div>
-                                        <label htmlFor="companyId" className="block text-sm font-medium text-gray-700">Company</label>
-                                        <select name="companyId" id="companyId" required className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                                            <option value="">Select a company</option>
-                                            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label htmlFor="owner" className="block text-sm font-medium text-gray-700">Owner Email</label>
-                                        <input type="email" name="owner" id="owner" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-                                    </div>
-                                    <div>
-                                        <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700">Repository URL</label>
-                                        <input type="url" name="repoUrl" id="repoUrl" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-                                    <textarea name="description" id="description" rows="3" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
-                                </div>
-                                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                                    <div>
-                                        <label htmlFor="language" className="block text-sm font-medium text-gray-700">Language</label>
-                                        <input type="text" id="language" name="language" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="framework" className="block text-sm font-medium text-gray-700">Framework</label>
-                                        <input type="text" id="framework" name="framework" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3 mt-4">
-                                    <div>
-                                        <label htmlFor="serverEnvironment" className="block text-sm font-medium text-gray-700">Server Environment:</label>
-                                        <input type="text" id="serverEnvironment" name="serverEnvironment" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. AWS, On-prem" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2 mt-4">
-                                    <div>
-                                        <label htmlFor="facing" className="block text-sm font-medium text-gray-700">Facing:</label>
-                                        <input type="text" id="facing" name="facing" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. Internal, External" />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="deploymentType" className="block text-sm font-medium text-gray-700">Deployment Type:</label>
-                                        <input type="text" id="deploymentType" name="deploymentType" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. Scheduled, Ad-hoc" />
-                                    </div>
-                                </div>
-                                <div className="mt-4">
-                                    <label htmlFor="authProfiles" className="block text-sm font-medium text-gray-700">Necessary Auth Profiles:</label>
-                                    <input type="text" id="authProfiles" name="authProfiles" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
-                                </div>
-                                <div className="mt-4">
-                                    <label htmlFor="dataTypes" className="block text-sm font-medium text-gray-700">Data Types Collected/Stored:</label>
-                                    <input type="text" id="dataTypes" name="dataTypes" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. PII, PCI" />
-                                </div>
-                                <div>
-                                    <button type="button" onClick={() => setIsAddModalOpen(false)} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 hover:bg-gray-300">
-                                        Cancel
-                                    </button>
-                                    <button type="submit" className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
-                                        Add Application
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                    <EditApplicationModal 
+                        app={{}} 
+                        companies={companies} 
+                        onClose={() => setIsAddModalOpen(false)} 
+                        onSave={handleSave}
+                    />
+                )}
+                
+                {editingApp && (
+                     <EditApplicationModal 
+                        app={editingApp} 
+                        companies={companies} 
+                        onClose={() => setEditingApp(null)} 
+                        onSave={handleSave}
+                    />
                 )}
 
-                <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-2xl font-semibold text-gray-700">Existing Applications</h2>
+                <div className="mb-4">
+                    <label htmlFor="company-filter" className="text-sm font-medium text-gray-700 mr-2">Filter by Company:</label>
+                    <select id="company-filter" value={filterCompany} onChange={e => setFilterCompany(e.target.value)} className="shadow-sm appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="">All Companies</option>
+                        {companies.map(company => (
+                            <option key={company.id} value={company.id}>{company.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="bg-white shadow rounded-lg overflow-x-auto">
+                    <table className="min-w-full bg-white">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="py-2 px-4 border-b text-left">Name</th>
+                                <th className="py-2 px-4 border-b text-left">Company</th>
+                                <th className="py-2 px-4 border-b">Score</th>
+                                <th className="py-2 px-4 border-b text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredApps.map(app => (
+                                <React.Fragment key={app.id}>
+                                    <tr onClick={() => toggleRow(app.id)} className="hover:bg-gray-50 cursor-pointer">
+                                        <td className="py-2 px-4 border-b font-medium">{app.name}</td>
+                                        <td className="py-2 px-4 border-b">{getCompanyName(app.companyId)}</td>
+                                        <td className="py-2 px-4 border-b text-center">
+                                            <ScoreBadge score={app.score.totalScore} />
+                                        </td>
+                                        <td className="py-2 px-4 border-b text-right">
+                                            <button onClick={(e) => { e.stopPropagation(); setEditingApp(app); }} className="text-blue-500 hover:underline px-2">Edit</button>
+                                            <button onClick={(e) => { e.stopPropagation(); setAppToDelete(app); }} className="text-red-500 hover:underline px-2">Delete</button>
+                                        </td>
+                                    </tr>
+                                    {expandedAppId === app.id && (
+                                        <tr>
+                                            <td colSpan="4" className="p-4 bg-gray-50">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                                                    <div><h4 className="font-semibold text-gray-700">Description</h4><p className="text-gray-600 mt-1">{app.description || 'N/A'}</p></div>
+                                                    <div><h4 className="font-semibold text-gray-700">Owner</h4><p className="text-gray-600 mt-1">{app.owner || 'N/A'}</p></div>
+                                                    <div><h4 className="font-semibold text-gray-700">Repository</h4>{app.repoUrl ? <a href={app.repoUrl} target="_blank" className="text-blue-500 hover:underline mt-1 block">{app.repoUrl}</a> : <p className="text-gray-600 mt-1">N/A</p>}</div>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mt-4 pt-4 border-t">
+                                                    <div><h4 className="font-semibold text-gray-700">Language</h4><p className="text-gray-600 mt-1">{app.language || 'N/A'}</p></div>
+                                                    <div><h4 className="font-semibold text-gray-700">Framework</h4><p className="text-gray-600 mt-1">{app.framework || 'N/A'}</p></div>
+                                                    <div><h4 className="font-semibold text-gray-700">Server Environment</h4><p className="text-gray-600 mt-1">{app.serverEnvironment || 'N/A'}</p></div>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t">
+                                                    <div><h4 className="font-semibold text-gray-700">Facing</h4><p className="text-gray-600 mt-1">{app.facing || 'N/A'}</p></div>
+                                                    <div><h4 className="font-semibold text-gray-700">Deployment Type</h4><p className="text-gray-600 mt-1">{app.deploymentType || 'N/A'}</p></div>
+                                                </div>
+                                                <div className="mt-4 pt-4 border-t text-sm">
+                                                    <h4 className="font-semibold text-gray-700">Necessary Auth Profiles</h4><p className="text-gray-600 mt-1">{app.authProfiles || 'N/A'}</p>
+                                                </div>
+                                                <div className="mt-4 pt-4 border-t text-sm">
+                                                    <h4 className="font-semibold text-gray-700">Data Types Collected/Stored</h4><p className="text-gray-600 mt-1">{app.dataTypes || 'N/A'}</p>
+                                                </div>
+                                                <div className="mt-4 pt-4 border-t">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Scoring Breakdown</h4>
+                                                    <div className="grid grid-cols-2 gap-4 text-center">
+                                                        <div>
+                                                            <div className="text-2xl font-bold">{app.score.knowledgeScore} / 50</div>
+                                                            <div className="text-sm text-gray-500">Knowledge Sharing</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-2xl font-bold">{app.score.toolScore} / 50</div>
+                                                            <div className="text-sm text-gray-500">Tool Usage</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <ContactManager application={app} onContactsUpdate={refreshData} />
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                 {appToDelete && (
+                     <ConfirmModal
+                         title="Delete Application"
+                         message={`Are you sure you want to delete ${appToDelete.name}?`}
+                         onConfirm={() => handleDelete(appToDelete.id)}
+                         onCancel={() => setAppToDelete(null)}
+                     />
+                 )}
+            </div>
+        );
+    };
+
+    const ScoreBadge = ({ score }) => {
+        const getColor = () => {
+            if (score >= 80) return 'bg-green-100 text-green-800';
+            if (score >= 60) return 'bg-yellow-100 text-yellow-800';
+            return 'bg-red-100 text-red-800';
+        };
+        return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getColor()}`}>{score} / 100</span>;
+    };
+    
+    const ScoringInput = ({ category, label, appData, onChange, isToggleable = false }) => {
+        const toolValue = appData[`${category}Tool`] || '';
+        const levelValue = appData[`${category}IntegrationLevel`] || '0';
+        const naValue = appData[`${category}NA`] || false;
+
+        return (
+            <div className="p-4 border rounded-md">
+                <div className="flex justify-between items-center">
+                    <h4 className="font-semibold">{label}</h4>
+                    {isToggleable && (
+                        <div className="flex items-center">
+                            <input 
+                                type="checkbox" 
+                                name={`${category}NA`} 
+                                checked={naValue} 
+                                onChange={onChange} 
+                                className="h-4 w-4 rounded"
+                            />
+                            <label className="ml-2 text-sm text-gray-600">Not Applicable</label>
+                        </div>
+                    )}
+                </div>
+                {!naValue && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                         <div>
-                            <label htmlFor="company-filter" className="text-sm font-medium text-gray-700 mr-2">Filter by Company:</label>
-                            <select 
-                                id="company-filter" 
-                                value={filterCompany} 
-                                onChange={e => setFilterCompany(e.target.value)}
-                                className="shadow-sm appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            >
-                                <option value="">All Companies</option>
-                                {companies.map(company => (
-                                    <option key={company.id} value={company.id}>{company.name}</option>
+                            <label className="block text-sm font-medium text-gray-700">Tool</label>
+                            <select name={`${category}Tool`} value={toolValue} onChange={onChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                                <option value="">None</option>
+                                <optgroup label="Managed Tools">
+                                    {toolsConfig.managed.map(t => <option key={t} value={t}>{t}</option>)}
+                                </optgroup>
+                                <optgroup label="Approved Unmanaged">
+                                    {toolsConfig.approvedUnmanaged.map(t => <option key={t} value={t}>{t}</option>)}
+                                </optgroup>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Integration Level</label>
+                            <select name={`${category}IntegrationLevel`} value={levelValue} onChange={onChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                                {Object.entries(integrationLevels).filter(([key]) => key !== '//').map(([level, { name }]) => (
+                                    <option key={level} value={level}>{level} - {name}</option>
                                 ))}
                             </select>
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full bg-white">
-                             <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="py-2 px-4 border-b">Name</th>
-                                    <th className="py-2 px-4 border-b">Company</th>
-                                    <th className="py-2 px-4 border-b">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredApps.map(app => (
-                                    <React.Fragment key={app.id}>
-                                        <tr onClick={() => setExpandedAppId(expandedAppId === app.id ? null : app.id)} className="hover:bg-gray-50 cursor-pointer">
-                                            <td className="py-2 px-4 border-b font-medium">{app.name}</td>
-                                            <td className="py-2 px-4 border-b">{getCompanyName(app.companyId)}</td>
-                                            <td className="py-2 px-4 border-b text-center">
-                                                <button onClick={(e) => { e.stopPropagation(); setEditingApp(app); }} className="text-blue-500 hover:underline">Edit</button>
-                                            </td>
-                                        </tr>
-                                        {expandedAppId === app.id && (
-                                            <tr>
-                                                <td colSpan="3" className="p-4 bg-gray-50">
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-700">Description</h4>
-                                                            <p className="text-gray-600 mt-1">{app.description || 'N/A'}</p>
-                                                        </div>
-                                                         <div>
-                                                            <h4 className="font-semibold text-gray-700">Owner</h4>
-                                                            <p className="text-gray-600 mt-1">{app.owner || 'N/A'}</p>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-700">Repository</h4>
-                                                            {app.repoUrl ? (
-                                                                <a href={app.repoUrl} target="_blank" className="text-blue-500 hover:underline mt-1 block">{app.repoUrl}</a>
-                                                            ) : (
-                                                                <p className="text-gray-600 mt-1">N/A</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mt-4 pt-4 border-t">
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-700">Language</h4>
-                                                            <p className="text-gray-600 mt-1">{app.language || 'N/A'}</p>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-700">Framework</h4>
-                                                            <p className="text-gray-600 mt-1">{app.framework || 'N/A'}</p>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-700">Server Environment</h4>
-                                                            <p className="text-gray-600 mt-1">{app.serverEnvironment || 'N/A'}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t">
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-700">Facing</h4>
-                                                            <p className="text-gray-600 mt-1">{app.facing || 'N/A'}</p>
-                                                        </div>
-                                                         <div>
-                                                            <h4 className="font-semibold text-gray-700">Deployment Type</h4>
-                                                            <p className="text-gray-600 mt-1">{app.deploymentType || 'N/A'}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-4 pt-4 border-t text-sm">
-                                                        <h4 className="font-semibold text-gray-700">Necessary Auth Profiles</h4>
-                                                        <p className="text-gray-600 mt-1">{app.authProfiles || 'N/A'}</p>
-                                                    </div>
-                                                    <div className="mt-4 pt-4 border-t text-sm">
-                                                        <h4 className="font-semibold text-gray-700">Data Types Collected/Stored</h4>
-                                                        <p className="text-gray-600 mt-1">{app.dataTypes || 'N/A'}</p>
-                                                    </div>
-                                                    <ContactManager application={app} onContactsUpdate={refreshApplications} />
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <EditApplicationModal
-                    app={editingApp}
-                    companies={companies}
-                    onClose={() => setEditingApp(null)}
-                    onSave={handleSave}
-                />
+                )}
             </div>
         );
     };
@@ -477,13 +555,15 @@
         );
     };
 
-    const initialApps = <%- JSON.stringify(applications) %>;
-    const initialCompanies = <%- JSON.stringify(companies) %>;
-
+    // --- RENDER ---
     ReactDOM.render(
-        <ManageApplicationsPage initialApps={initialApps} initialCompanies={initialCompanies} />,
+        <ManageApplicationsPage 
+            initialApps={<%- JSON.stringify(applications) %>} 
+            initialCompanies={<%- JSON.stringify(companies) %>} 
+        />,
         document.getElementById('manage-apps-root')
     );
 </script>
 
 <%- include('../partials/footer') %>
+
