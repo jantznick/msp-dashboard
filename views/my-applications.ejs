@@ -133,12 +133,13 @@
         );
     };
 
-    const MyApplicationsPage = ({ initialApps, initialCompany }) => {
-        const [applications, setApplications] = useState(initialApps);
-        const [company] = useState(initialCompany);
-        const [expandedAppId, setExpandedAppId] = useState(null);
+    const MyApplicationsPage = () => {
+        const [applications, setApplications] = useState(<%- JSON.stringify(applications) %>);
+        const [company, setCompany] = useState(<%- JSON.stringify(company) %>);
+        const [expandedRows, setExpandedRows] = useState([]);
         const [editingApp, setEditingApp] = useState(null);
-        const [copySuccess, setCopySuccess] = useState('');
+        const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+        const [copiedLink, setCopiedLink] = useState(null);
 
         if (!company) {
              return (
@@ -155,14 +156,13 @@
             setEditingApp(null);
         };
         
-        const copyToClipboard = () => {
-            if (!company) return;
-            const link = `${window.location.origin}/intake/application?company=${company.id}`;
+        const copyToClipboard = (appId) => {
+            const link = `${window.location.origin}/intake/application?company=${company.id}&application_id=${appId}`;
             navigator.clipboard.writeText(link).then(() => {
-                setCopySuccess('Link copied to clipboard!');
-                setTimeout(() => setCopySuccess(''), 2000); // Reset after 2 seconds
-            }, () => {
-                alert('Failed to copy the link.');
+                setCopiedLink(appId);
+                setTimeout(() => setCopiedLink(null), 2000);
+            }, (err) => {
+                alert('Failed to copy link.');
             });
         };
 
@@ -172,79 +172,90 @@
                     <h1 class="text-4xl font-bold text-[secondary] mb-2">My Company's Applications</h1>
                     <p class="text-xl text-gray-600">Company: <span class="font-semibold">{company.name}</span></p>
                     <div className="mt-4">
-                        <button onClick={copyToClipboard} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline text-sm">
+                        <button onClick={() => setIsAddModalOpen(true)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline text-sm">
                             Share Application Intake Link
                         </button>
-                        {copySuccess && <span className="ml-3 text-green-600">{copySuccess}</span>}
+                        {copiedLink && <span className="ml-3 text-green-600">Link copied for application ID: {copiedLink}</span>}
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-                    <h2 className="text-2xl font-semibold text-gray-700 mb-4">Add a New Application</h2>
-                    <form action="/my-applications/add" method="POST" className="space-y-4">
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-bold text-gray-700">Application Name:</label>
-                                <input type="text" id="name" name="name" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required />
-                            </div>
-                            <div>
-                                <label htmlFor="owner" className="block text-sm font-bold text-gray-700">Owner / Eng. Lead:</label>
-                                <input type="text" id="owner" name="owner" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                            </div>
-                        </div>
-                         <div>
-                            <label htmlFor="description" className="block text-sm font-bold text-gray-700">Description / Use Case:</label>
-                            <textarea id="description" name="description" rows="3" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"></textarea>
-                        </div>
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3">
-                             <div>
-                                <label htmlFor="language" className="block text-sm font-bold text-gray-700">Language:</label>
-                                <input type="text" id="language" name="language" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                            </div>
-                            <div>
-                                <label htmlFor="framework" className="block text-sm font-bold text-gray-700">Framework:</label>
-                                <input type="text" id="framework" name="framework" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                            </div>
-                             <div>
-                                <label htmlFor="serverEnvironment" className="block text-sm font-bold text-gray-700">Server Environment:</label>
-                                <input type="text" id="serverEnvironment" name="serverEnvironment" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. AWS, On-prem" />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                            <div>
-                                <label htmlFor="facing" className="block text-sm font-bold text-gray-700">Facing:</label>
-                                <input type="text" id="facing" name="facing" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Internal, External" />
-                            </div>
-                            <div>
-                                <label htmlFor="deploymentType" className="block text-sm font-bold text-gray-700">Deployment Type:</label>
-                                <input type="text" id="deploymentType" name="deploymentType" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Scheduled, Ad-hoc" />
-                            </div>
-                        </div>
-                        <div>
-                            <label htmlFor="repoUrl" className="block text-sm font-bold text-gray-700">Repository URL:</label>
-                            <input type="url" id="repoUrl" name="repoUrl" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                        </div>
-                        <div>
-                            <label htmlFor="authProfiles" className="block text-sm font-bold text-gray-700">Necessary Auth Profiles:</label>
-                            <input type="text" id="authProfiles" name="authProfiles" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                        </div>
-                        <div>
-                            <label htmlFor="dataTypes" className="block text-sm font-bold text-gray-700">Data Types Collected/Stored:</label>
-                            <input type="text" id="dataTypes" name="dataTypes" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. PII, PCI" />
-                        </div>
-                        <div>
-                            <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                                Add Application
-                            </button>
-                        </div>
-                    </form>
+                <div class="flex justify-between items-center">
+                    <h1 class="text-3xl font-bold text-gray-800">My Applications</h1>
+                    <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
+                        Add New Application
+                    </button>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-2xl font-semibold text-gray-700 mb-4">Existing Applications</h2>
-                    {applications.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full bg-white">
+                {isAddModalOpen && (
+                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full z-50 flex items-center justify-center">
+                        <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full">
+                            <h2 className="text-2xl font-bold mb-4">Add a New Application</h2>
+                            <form action="/my-applications/add" method="POST" className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Application Name</label>
+                                        <input type="text" name="name" id="name" required className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="owner" className="block text-sm font-medium text-gray-700">Owner Email</label>
+                                        <input type="email" name="owner" id="owner" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+                                    <textarea name="description" id="description" rows="3" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+                                </div>
+                                <div>
+                                    <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700">Repository URL</label>
+                                    <input type="url" name="repoUrl" id="repoUrl" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label htmlFor="language" className="block text-sm font-medium text-gray-700">Language</label>
+                                        <input type="text" name="language" id="language" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="framework" className="block text-sm font-medium text-gray-700">Framework</label>
+                                        <input type="text" name="framework" id="framework" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="serverEnvironment" className="block text-sm font-medium text-gray-700">Server Environment</label>
+                                        <input type="text" name="serverEnvironment" id="serverEnvironment" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="facing" className="block text-sm font-medium text-gray-700">Facing</label>
+                                        <input type="text" name="facing" id="facing" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., Internal, External"/>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="deploymentType" className="block text-sm font-medium text-gray-700">Deployment Type</label>
+                                        <input type="text" name="deploymentType" id="deploymentType" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., Scheduled, Ad-hoc"/>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label htmlFor="authProfiles" className="block text-sm font-medium text-gray-700">Auth Profiles</label>
+                                    <input type="text" name="authProfiles" id="authProfiles" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                </div>
+                                <div>
+                                    <label htmlFor="dataTypes" className="block text-sm font-medium text-gray-700">Data Types</label>
+                                    <input type="text" name="dataTypes" id="dataTypes" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., PII, PCI"/>
+                                </div>
+                                <div className="mt-6 flex justify-end">
+                                    <button type="button" onClick={() => setIsAddModalOpen(false)} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 hover:bg-gray-300">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
+                                        Submit
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                <div className="mt-6 bg-white rounded-lg shadow">
+                    <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-100">
                                     <tr>
                                         <th className="py-2 px-4 border-b">Name</th>
@@ -255,14 +266,17 @@
                                 <tbody>
                                     {applications.map(app => (
                                         <React.Fragment key={app.id}>
-                                            <tr onClick={() => setExpandedAppId(expandedAppId === app.id ? null : app.id)} className="hover:bg-gray-50 cursor-pointer">
+                                            <tr onClick={() => setExpandedRows(prev => prev.includes(app.id) ? prev.filter(i => i !== app.id) : [...prev, app.id])} className="hover:bg-gray-50 cursor-pointer">
                                                 <td className="py-2 px-4 border-b font-medium">{app.name}</td>
                                                 <td className="py-2 px-4 border-b text-sm text-gray-600">{app.owner || 'N/A'}</td>
-                                                <td className="py-2 px-4 border-b text-center">
-                                                    <button onClick={(e) => { e.stopPropagation(); setEditingApp(app); }} className="text-blue-500 hover:underline">Edit</button>
+                                                <td className="py-2 px-4 border-b text-center space-x-2">
+                                                    <button onClick={(e) => { e.stopPropagation(); setEditingApp(app); }} className="text-blue-500 hover:underline text-sm">Edit</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); copyToClipboard(app.id); }} className="text-green-500 hover:underline text-sm">
+                                                        {copiedLink === app.id ? 'Copied!' : 'Copy Link'}
+                                                    </button>
                                                 </td>
                                             </tr>
-                                            {expandedAppId === app.id && (
+                                            {expandedRows.includes(app.id) && (
                                                 <tr>
                                                     <td colSpan="3" className="p-4 bg-gray-50">
                                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
@@ -323,10 +337,6 @@
                                 </tbody>
                             </table>
                         </div>
-                    ) : (
-                         <p className="text-gray-600">There are no applications associated with your company yet.</p>
-                    )}
-                </div>
                 <EditApplicationModal 
                     app={editingApp}
                     onClose={() => setEditingApp(null)}

@@ -126,6 +126,7 @@
         const [editingApp, setEditingApp] = useState(null);
         const [filterCompany, setFilterCompany] = useState('');
         const [expandedAppId, setExpandedAppId] = useState(null);
+        const [isAddModalOpen, setIsAddModalOpen] = useState(false);
         
         const getCompanyName = (companyId) => {
             const company = companies.find(c => c.id === companyId);
@@ -155,81 +156,93 @@
 
         return (
             <div>
-                <h1 className="text-3xl font-bold text-gray-800 mb-6">Manage Applications</h1>
-
-                <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-                    <h2 className="text-2xl font-semibold text-gray-700 mb-4">Add New Application</h2>
-                    <form action="/admin/applications" method="POST" className="space-y-4">
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-bold text-gray-700">Application Name:</label>
-                                <input type="text" id="name" name="name" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required />
-                            </div>
-                            <div>
-                                <label htmlFor="companyId" className="block text-sm font-bold text-gray-700">Company:</label>
-                                <select id="companyId" name="companyId" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required>
-                                    <option value="">Select a company</option>
-                                    {companies.map(company => (
-                                        <option key={company.id} value={company.id}>{company.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                         <div>
-                            <label htmlFor="description" className="block text-sm font-bold text-gray-700">Description:</label>
-                            <textarea id="description" name="description" rows="3" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"></textarea>
-                        </div>
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                             <div>
-                                <label htmlFor="owner" className="block text-sm font-bold text-gray-700">Owner:</label>
-                                <input type="text" id="owner" name="owner" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                            </div>
-                            <div>
-                                <label htmlFor="repoUrl" className="block text-sm font-bold text-gray-700">Repository URL:</label>
-                                <input type="url" id="repoUrl" name="repoUrl" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3 mt-4">
-                             <div>
-                                <label htmlFor="language" className="block text-sm font-bold text-gray-700">Language:</label>
-                                <input type="text" id="language" name="language" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                            </div>
-                            <div>
-                                <label htmlFor="framework" className="block text-sm font-bold text-gray-700">Framework:</label>
-                                <input type="text" id="framework" name="framework" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                            </div>
-                             <div>
-                                <label htmlFor="serverEnvironment" className="block text-sm font-bold text-gray-700">Server Environment:</label>
-                                <input type="text" id="serverEnvironment" name="serverEnvironment" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. AWS, On-prem" />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2 mt-4">
-                            <div>
-                                <label htmlFor="facing" className="block text-sm font-bold text-gray-700">Facing:</label>
-                                <input type="text" id="facing" name="facing" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Internal, External" />
-                            </div>
-                            <div>
-                                <label htmlFor="deploymentType" className="block text-sm font-bold text-gray-700">Deployment Type:</label>
-                                <input type="text" id="deploymentType" name="deploymentType" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. Scheduled, Ad-hoc" />
-                            </div>
-                        </div>
-                        <div className="mt-4">
-                            <label htmlFor="authProfiles" className="block text-sm font-bold text-gray-700">Necessary Auth Profiles:</label>
-                            <input type="text" id="authProfiles" name="authProfiles" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" />
-                        </div>
-                        <div className="mt-4">
-                            <label htmlFor="dataTypes" className="block text-sm font-bold text-gray-700">Data Types Collected/Stored:</label>
-                            <input type="text" id="dataTypes" name="dataTypes" className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="e.g. PII, PCI" />
-                        </div>
-                        <div>
-                            <button type="submit" className="mt-4 bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                                Add Application
-                            </button>
-                        </div>
-                    </form>
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-3xl font-bold text-gray-800">Manage Applications</h1>
+                    <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
+                        Add New Application
+                    </button>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow-md">
+                {isAddModalOpen && (
+                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full overflow-y-auto max-h-full">
+                            <h2 className="text-2xl font-bold mb-4">Add New Application</h2>
+                            <form action="/admin/applications/add" method="POST" className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Application Name</label>
+                                        <input type="text" name="name" id="name" required className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="companyId" className="block text-sm font-medium text-gray-700">Company</label>
+                                        <select name="companyId" id="companyId" required className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                                            <option value="">Select a company</option>
+                                            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="owner" className="block text-sm font-medium text-gray-700">Owner Email</label>
+                                        <input type="email" name="owner" id="owner" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700">Repository URL</label>
+                                        <input type="url" name="repoUrl" id="repoUrl" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+                                    <textarea name="description" id="description" rows="3" className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+                                </div>
+                                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                                    <div>
+                                        <label htmlFor="language" className="block text-sm font-medium text-gray-700">Language</label>
+                                        <input type="text" id="language" name="language" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="framework" className="block text-sm font-medium text-gray-700">Framework</label>
+                                        <input type="text" id="framework" name="framework" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3 mt-4">
+                                    <div>
+                                        <label htmlFor="serverEnvironment" className="block text-sm font-medium text-gray-700">Server Environment:</label>
+                                        <input type="text" id="serverEnvironment" name="serverEnvironment" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. AWS, On-prem" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2 mt-4">
+                                    <div>
+                                        <label htmlFor="facing" className="block text-sm font-medium text-gray-700">Facing:</label>
+                                        <input type="text" id="facing" name="facing" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. Internal, External" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="deploymentType" className="block text-sm font-medium text-gray-700">Deployment Type:</label>
+                                        <input type="text" id="deploymentType" name="deploymentType" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. Scheduled, Ad-hoc" />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="authProfiles" className="block text-sm font-medium text-gray-700">Necessary Auth Profiles:</label>
+                                    <input type="text" id="authProfiles" name="authProfiles" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="dataTypes" className="block text-sm font-medium text-gray-700">Data Types Collected/Stored:</label>
+                                    <input type="text" id="dataTypes" name="dataTypes" className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="e.g. PII, PCI" />
+                                </div>
+                                <div>
+                                    <button type="button" onClick={() => setIsAddModalOpen(false)} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 hover:bg-gray-300">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
+                                        Add Application
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                <div className="bg-white p-6 rounded-lg shadow-md mb-8">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-semibold text-gray-700">Existing Applications</h2>
                         <div>
@@ -261,7 +274,7 @@
                                     <React.Fragment key={app.id}>
                                         <tr onClick={() => setExpandedAppId(expandedAppId === app.id ? null : app.id)} className="hover:bg-gray-50 cursor-pointer">
                                             <td className="py-2 px-4 border-b font-medium">{app.name}</td>
-                                            <td className="py-2 px-4 border-b">{app.company.name}</td>
+                                            <td className="py-2 px-4 border-b">{getCompanyName(app.companyId)}</td>
                                             <td className="py-2 px-4 border-b text-center">
                                                 <button onClick={(e) => { e.stopPropagation(); setEditingApp(app); }} className="text-blue-500 hover:underline">Edit</button>
                                             </td>

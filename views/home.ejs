@@ -41,7 +41,7 @@
             </div>
             <div class="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
                 <% products.forEach(product => { %>
-                    <a href="/products/<%= product.slug %>" class="block bg-white border border-gray-200 rounded-lg p-6 text-center transform hover:shadow-xl transition-shadow duration-300">
+                    <a href="/docs/products/<%= product.slug %>" class="block bg-white border border-gray-200 rounded-lg p-6 text-center transform hover:shadow-xl transition-shadow duration-300">
                         <h3 class="text-xl font-semibold text-gray-800"><%= product.title %></h3>
                         <p class="mt-2 text-gray-600"><%= product.summary %></p>
                     </a>
