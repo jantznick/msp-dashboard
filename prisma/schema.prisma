@@ -20,21 +20,20 @@ model User {
 }
 
 model Company {
-  id           String        @id @default(cuid())
-  name         String        @unique
-  users        User[]
+  id          String    @id @default(cuid())
+  name        String    @unique
+  domains     String?
+  users       User[]
   applications Application[]
-  domains      String? // Comma-separated list of domains
-
-  // Default metadata for new applications
-  engManager        String?
-  language          String?
-  framework         String?
-  serverEnvironment String?
-  facing            String?
-  deploymentType    String?
-  authProfiles      String?
-  dataTypes         String?
+  engManager  String?
+  language            String?
+  framework           String?
+  serverEnvironment   String?
+  facing              String?
+  deploymentType      String?
+  authProfiles        String?
+  dataTypes           String?
+  contacts    Contact[]
 }
 
 model ChangeLog {
@@ -57,22 +56,34 @@ model ChangeLog {
 }
 
 model Application {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  owner       String?
-  repoUrl     String?
-  companyId   String
-  company     Company   @relation(fields: [companyId], references: [id])
-  requests    Request[]
+  id              String    @id @default(cuid())
+  name            String
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
+  requests        Request[]
+  description     String?
+  owner           String?
+  repoUrl         String?
+  language        String?
+  framework       String?
+  serverEnvironment String?
+  facing          String?
+  deploymentType  String?
+  authProfiles    String?
+  dataTypes       String?
+  contacts        Contact[]
+}
 
-  language            String?
-  framework           String?
-  serverEnvironment   String? // cloud vs on-prem
-  facing              String? // external/internal
-  deploymentType      String? // scheduled, ad-hoc
-  authProfiles        String?
-  dataTypes           String? // PII, PCI, etc.
+model Contact {
+  id            String       @id @default(cuid())
+  name          String
+  title         String?
+  email         String?
+  companyId     String?
+  company       Company?     @relation(fields: [companyId], references: [id])
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id])
+  createdAt     DateTime     @default(now())
 }
 
 model Request {

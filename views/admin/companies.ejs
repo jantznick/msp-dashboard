@@ -108,6 +108,12 @@
         const [editingCompany, setEditingCompany] = useState(null);
         const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+        const refreshCompanies = async () => {
+            const response = await fetch('/api/companies');
+            const data = await response.json();
+            setCompanies(data);
+        };
+
         const toggleRow = (id) => {
             setExpandedRows(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
         };
@@ -132,6 +138,11 @@
             }
         };
         
+        const handleSaveSuccess = () => {
+            setEditingCompany(null);
+            refreshCompanies();
+        };
+
         const copyToClipboard = (companyId) => {
             const link = `${window.location.origin}/intake/application?company=${companyId}`;
             navigator.clipboard.writeText(link).then(() => {
@@ -217,6 +228,7 @@
                                                 </div>
                                                 <div className="mt-4 pt-4 border-t"><strong>Auth Profiles:</strong> {company.authProfiles || 'N/A'}</div>
                                                 <div className="mt-2"><strong>Data Types:</strong> {company.dataTypes || 'N/A'}</div>
+                                                <ContactManager company={company} onContactsUpdate={refreshCompanies} />
                                             </td>
                                         </tr>
                                     )}
@@ -226,11 +238,135 @@
                     </table>
                 </div>
 
-                <EditCompanyModal 
-                    company={editingCompany}
-                    onClose={() => setEditingCompany(null)}
-                    onSave={handleSave}
-                />
+                {editingCompany && (
+                    <EditCompanyModal 
+                        company={editingCompany} 
+                        onClose={() => setEditingCompany(null)} 
+                        onSave={handleSave} 
+                    />
+                )}
+            </div>
+        );
+    };
+
+    const ContactManager = ({ company, onContactsUpdate }) => {
+        const [editingContact, setEditingContact] = useState(null);
+        const [contactToDelete, setContactToDelete] = useState(null);
+
+        const allContacts = [
+            ...(company.contacts || []).map(c => ({ ...c, type: 'Company' })),
+            ...(company.applications || []).flatMap(app => 
+                (app.contacts || []).map(c => ({ ...c, type: 'Application', appName: app.name }))
+            )
+        ];
+
+        const handleSave = async (contactData) => {
+            const url = contactData.id ? `/api/contacts/${contactData.id}` : '/api/contacts';
+            const method = contactData.id ? 'PUT' : 'POST';
+            
+            const body = {
+                ...contactData,
+                companyId: company.id,
+            };
+            if (contactData.id) delete body.id;
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (response.ok) {
+                onContactsUpdate();
+                setEditingContact(null);
+            } else {
+                alert('Failed to save contact.');
+            }
+        };
+
+        const handleDelete = async (contactId) => {
+            const response = await fetch(`/api/contacts/${contactId}`, { method: 'DELETE' });
+            if (response.ok) {
+                onContactsUpdate();
+            } else {
+                alert('Failed to delete contact.');
+            }
+            setContactToDelete(null);
+        };
+        
+        return (
+            <div className="mt-4 pt-4 border-t">
+                <div className="flex justify-between items-center">
+                    <h4 className="font-semibold text-gray-700">Contacts</h4>
+                    <button onClick={() => setEditingContact({ name: '', title: '', email: '' })} className="bg-blue-500 text-white px-2 py-1 rounded text-xs">Add Contact</button>
+                </div>
+                <ul className="mt-2 space-y-2">
+                    {allContacts.map(contact => (
+                        <li key={contact.id} className="text-sm p-2 bg-gray-100 rounded">
+                            <div className="font-bold">{contact.name}</div>
+                            <div>{contact.title}</div>
+                            <div>{contact.email}</div>
+                            {contact.type === 'Application' && <div className="text-xs text-gray-500">From: {contact.appName}</div>}
+                            <div className="mt-1">
+                                <button onClick={() => setEditingContact(contact)} className="text-blue-600 text-xs">Edit</button>
+                                <button onClick={() => setContactToDelete(contact)} className="text-red-600 text-xs ml-2">Delete</button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+                {editingContact && <ContactModal contact={editingContact} onSave={handleSave} onClose={() => setEditingContact(null)} />}
+                {contactToDelete && (
+                    <ConfirmModal 
+                        title="Delete Contact"
+                        message={`Are you sure you want to delete ${contactToDelete.name}?`}
+                        onConfirm={() => handleDelete(contactToDelete.id)}
+                        onCancel={() => setContactToDelete(null)}
+                    />
+                )}
+            </div>
+        );
+    };
+
+    const ContactModal = ({ contact, onSave, onClose }) => {
+        const [formData, setFormData] = useState(contact);
+
+        const handleChange = (e) => {
+            setFormData({ ...formData, [e.target.name]: e.target.value });
+        };
+
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            onSave(formData);
+        };
+
+        return (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full z-50 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+                    <h3 className="text-lg font-bold mb-4">{contact.id ? 'Edit' : 'Add'} Contact</h3>
+                    <form onSubmit={handleSubmit}>
+                        <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Name" className="w-full p-2 border rounded mb-2" required />
+                        <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Title" className="w-full p-2 border rounded mb-2" />
+                        <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" className="w-full p-2 border rounded mb-4" />
+                        <div className="flex justify-end">
+                            <button type="button" onClick={onClose} className="bg-gray-200 px-4 py-2 rounded mr-2">Cancel</button>
+                            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+
+    const ConfirmModal = ({ title, message, onConfirm, onCancel }) => {
+        return (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full z-50 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+                    <h3 className="text-lg font-bold mb-4">{title}</h3>
+                    <p className="mb-6">{message}</p>
+                    <div className="flex justify-end">
+                        <button type="button" onClick={onCancel} className="bg-gray-200 px-4 py-2 rounded mr-2">Cancel</button>
+                        <button type="button" onClick={onConfirm} className="bg-red-600 text-white px-4 py-2 rounded">Confirm</button>
+                    </div>
+                </div>
             </div>
         );
     };
@@ -238,7 +374,7 @@
     const initialCompanies = <%- JSON.stringify(companies) %>;
 
     ReactDOM.render(
-        <ManageCompaniesPage initialCompanies={initialCompanies} />,
+        <ManageCompaniesPage />,
         document.getElementById('manage-companies-root')
     );
 </script>

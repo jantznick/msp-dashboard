@@ -196,6 +196,21 @@ router.post('/applications/:id/update', async (req, res) => {
     }
 });
 
+router.get('/applications', isAdmin, async (req, res) => {
+    try {
+        const applications = await prisma.application.findMany({
+            orderBy: { name: 'asc' },
+            include: {
+                company: true,
+                contacts: true
+            }
+        });
+        res.json(applications);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch applications.' });
+    }
+});
+
 router.get('/changelogs', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const logs = await prisma.changeLog.findMany({
@@ -208,14 +223,21 @@ router.get('/changelogs', isAuthenticated, isAdmin, async (req, res) => {
     }
 });
 
-router.get('/companies', isAuthenticated, isAdmin, async (req, res) => {
+router.get('/companies', isAdmin, async (req, res) => {
     try {
         const companies = await prisma.company.findMany({
-            orderBy: { name: 'asc' }
+            orderBy: { name: 'asc' },
+            include: {
+                contacts: true,
+                applications: {
+                    include: {
+                        contacts: true
+                    }
+                }
+            }
         });
         res.json(companies);
     } catch (error) {
-        console.error('Error fetching companies API:', error);
         res.status(500).json({ error: 'Failed to fetch companies.' });
     }
 });
@@ -293,5 +315,41 @@ router.post('/changelogs/:id/reject', isAuthenticated, isAdmin, async (req, res)
     }
 });
 
+// -- Contact Management --
+router.post('/contacts', isAdmin, async (req, res) => {
+    const { name, title, email, companyId, applicationId } = req.body;
+    try {
+        const contact = await prisma.contact.create({
+            data: { name, title, email, companyId, applicationId }
+        });
+        res.json(contact);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create contact.' });
+    }
+});
+
+router.put('/contacts/:id', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { name, title, email } = req.body;
+    try {
+        const contact = await prisma.contact.update({
+            where: { id },
+            data: { name, title, email }
+        });
+        res.json(contact);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update contact.' });
+    }
+});
+
+router.delete('/contacts/:id', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.contact.delete({ where: { id } });
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete contact.' });
+    }
+});
 
 module.exports = router;
