@@ -15,6 +15,11 @@ const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 5555;
 
+// Trust the proxy in production
+if (app.get('env') === 'production') {
+  app.set('trust proxy', 1); // trust first proxy
+}
+
 const JIRA_PROJECTS = {
   "TC": "Tool-Catalog",
   "SEC": "Security Projects",
@@ -44,7 +49,9 @@ app.use(
         resave: false,
         saveUninitialized: false,
         cookie: {
-            maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
+            secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+            httpOnly: true,
+            maxAge: 24 * 7 * 60 * 60 * 1000, // 7 days
         }
     })
 );
