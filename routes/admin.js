@@ -28,6 +28,14 @@ router.get('/', async (req, res) => {
                 }
             }
         });
+
+        // Remove password hashes before sending to client
+        requests.forEach(req => {
+            if (req.User) {
+                delete req.User.password;
+            }
+        });
+
         const JIRA_PROJECTS = {};
         for (let i = 1; process.env[`JIRA_PROJECT_KEY_${i}`]; i++) {
             JIRA_PROJECTS[process.env[`JIRA_PROJECT_KEY_${i}`]] = process.env[`JIRA_PROJECT_NAME_${i}`];
@@ -240,6 +248,10 @@ router.get('/users', async (req, res) => {
             include: { company: true },
             orderBy: { email: 'asc' }
         });
+
+        // Remove password hashes before sending to client
+        users.forEach(user => delete user.password);
+
         const companies = await prisma.company.findMany({ orderBy: { name: 'asc' } });
         res.render('admin/users', { title: 'Manage Users', users, companies });
     } catch (error) {

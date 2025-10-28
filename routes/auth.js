@@ -16,6 +16,7 @@ router.post('/login', async (req, res) => {
             include: { company: true }
         });
         if (user && bcrypt.compareSync(password, user.password)) {
+            delete user.password; // Prevent password hash from being stored in session
             req.session.user = user;
             res.redirect('/');
         } else {
@@ -53,6 +54,7 @@ router.post('/register', async (req, res) => {
             data: { email, password: hashedPassword, companyId },
             include: { company: true }
         });
+        delete user.password; // Prevent password hash from being stored in session
         req.session.user = user;
         res.redirect('/');
     } catch (error) {
